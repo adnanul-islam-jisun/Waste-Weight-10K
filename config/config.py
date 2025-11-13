@@ -108,7 +108,7 @@ if DEVICE == "cuda":
         BATCH_SIZE = 16
     print(f"✓ Auto-adjusted batch size: {BATCH_SIZE} (based on {gpu_memory_gb:.1f} GB GPU)")
 elif DEVICE == "mps":
-    BATCH_SIZE = 32  # Apple Silicon optimized
+    BATCH_SIZE = 32  # Apple Silicon optimized (conservative for ViT)
 else:
     BATCH_SIZE = 8  # CPU
 

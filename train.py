@@ -201,7 +201,7 @@ def prepare_data(df, base_image_path, test_size=0.2, val_size=0.1, random_state=
 
 
 def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
-                device, num_epochs=100, save_dir='./checkpoints'):
+                device, num_epochs=EPOCHS, save_dir='./checkpoints'):
     """Complete training pipeline with progressive training and GPU optimization"""
     
     print("\n" + "="*80)
@@ -546,15 +546,15 @@ if __name__ == "__main__":
     print("CREATING MODEL")
     print("="*80)
     
-    device = torch.device('mps' if torch.backends.mps.is_available() else 
-                         'cuda' if torch.cuda.is_available() else 'cpu')
+    # Use DEVICE from config.py (already optimized and detected)
+    device = torch.device(DEVICE)
     print(f"✓ Using device: {device}")
     
     model, preprocessor, loss_fn = create_optimized_model(
         num_categories=data_dict['num_product_types'],
         num_numerical_features=len(data_dict['numerical_features']),
         scaler=None,  # We'll handle scaling in the model
-        device=str(device)
+        device=DEVICE
     )
     print(f"✓ Model created with {sum(p.numel() for p in model.parameters()):,} parameters")
     
@@ -566,7 +566,7 @@ if __name__ == "__main__":
         weight_preprocessor=data_dict['weight_preprocessor'],
         loss_fn=loss_fn,
         device=device,
-        num_epochs=50,  # Start with 50 epochs, increase if needed
+        num_epochs=EPOCHS,  # Use EPOCHS from config.py
         save_dir='./checkpoints'
     )
     
