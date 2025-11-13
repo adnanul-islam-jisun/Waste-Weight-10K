@@ -183,7 +183,7 @@ class TrainingConfig:
     CATEGORY_EMBEDDING_DIM = 32
     
     # Data
-    BATCH_SIZE = 8  # Adjust based on GPU memory
+    BATCH_SIZE = 32  # Adjust based on GPU memory
     NUM_WORKERS = 4
     USE_LOG_TRANSFORM = True  # IMPORTANT: Recommended for your data
     

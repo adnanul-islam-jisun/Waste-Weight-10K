@@ -4,8 +4,8 @@ import os
 import numpy as np
 
 # Data paths - Update these paths to your dataset location
-CSV_PATH = "/Volumes/TRANSCEND/Dataset/waste_dataset/image.csv"
-BASE_IMAGE_PATH = "/Volumes/TRANSCEND/Dataset/waste_dataset"
+CSV_PATH = "/content/drive/MyDrive/KaggleData/disaster/waste_dataset/image.csv"
+BASE_IMAGE_PATH = "//content/drive/MyDrive/KaggleData/disaster/waste_dataset"
 
 # Image and training parameters
 IMG_SIZE = 224
