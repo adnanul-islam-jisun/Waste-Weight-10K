@@ -12,7 +12,7 @@ import os
 # DATA PATHS
 # ============================================================================
 
-CSV_PATH = "//kaggle/input/disaster/waste_dataset/image.csv"
+CSV_PATH = "/kaggle/input/disaster/waste_dataset/image.csv"
 BASE_IMAGE_PATH = "/kaggle/input/disaster/waste_dataset"
 
 
