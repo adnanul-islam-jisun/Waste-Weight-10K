@@ -317,7 +317,7 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
         
         # GPU memory monitoring
         gpu_mem_str = ""
-        if DEVICE.type == 'cuda':
+        if DEVICE == 'cuda':
             allocated = torch.cuda.memory_allocated() / 1024**3
             reserved = torch.cuda.memory_reserved() / 1024**3
             gpu_mem_str = f" | GPU Mem: {allocated:.2f}/{reserved:.2f}GB"
@@ -381,7 +381,7 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
             
             # GPU memory monitoring
             gpu_mem_str = ""
-            if DEVICE.type == 'cuda':
+            if DEVICE == 'cuda':
                 allocated = torch.cuda.memory_allocated() / 1024**3
                 reserved = torch.cuda.memory_reserved() / 1024**3
                 gpu_mem_str = f" | GPU Mem: {allocated:.2f}/{reserved:.2f}GB"
