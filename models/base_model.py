@@ -1,1 +1,0 @@
-# Base Model Architecture
