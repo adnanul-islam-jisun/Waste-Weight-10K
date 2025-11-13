@@ -69,7 +69,7 @@ class WeightPredictionDataset(Dataset):
         numerical_data = row[self.numerical_features].values.astype(np.float32)
         
         # Get target weight (apply LOG transformation)
-        weight = row['weight_in_kg']
+        weight = row['weight']  # Column renamed from 'weight_in_kg' to 'weight' earlier
         if self.weight_preprocessor:
             weight = self.weight_preprocessor.transform(np.array([weight]))[0]
         
@@ -120,14 +120,24 @@ def prepare_data(df, base_image_path, test_size=0.2, val_size=0.1, random_state=
     print(f"  - Val:   {len(val_df)} samples ({len(val_df)/len(df)*100:.1f}%)")
     print(f"  - Test:  {len(test_df)} samples ({len(test_df)/len(df)*100:.1f}%)")
     
-    # Image transforms (ViT expects 224x224)
+    # Weight distribution analysis
+    print(f"\n📊 Weight Distribution:")
+    print(f"  - Train: {train_df['weight'].min():.1f} - {train_df['weight'].max():.1f} kg (mean: {train_df['weight'].mean():.1f})")
+    print(f"  - Val:   {val_df['weight'].min():.1f} - {val_df['weight'].max():.1f} kg (mean: {val_df['weight'].mean():.1f})")
+    print(f"  - Test:  {test_df['weight'].min():.1f} - {test_df['weight'].max():.1f} kg (mean: {test_df['weight'].mean():.1f})")
+    
+    # Image transforms - STRONGER AUGMENTATION for small dataset
     train_transform = transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize((256, 256)),  # Resize larger first
+        transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),  # Random crop with zoom
         transforms.RandomHorizontalFlip(p=0.5),
-        transforms.ColorJitter(brightness=0.2, contrast=0.2),
+        transforms.RandomRotation(degrees=15),  # Rotate ±15 degrees
+        transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.2, hue=0.1),  # Stronger color jitter
+        transforms.RandomGrayscale(p=0.1),  # 10% chance grayscale
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], 
-                           std=[0.229, 0.224, 0.225])
+                           std=[0.229, 0.224, 0.225]),
+        transforms.RandomErasing(p=0.2, scale=(0.02, 0.15))  # Random erasing (cutout)
     ])
     
     val_transform = transforms.Compose([
@@ -342,6 +352,11 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
                 'val_rmse': val_rmse,
             }, os.path.join(save_dir, f'best_model_phase1_{timestamp}.pt'))
             print(f"  ✓ Saved best model (Phase 1) to: {save_dir}/best_model_phase1_{timestamp}.pt")
+        
+        # Save CSV after every epoch (instant save)
+        metrics_df = pd.DataFrame(epoch_records)
+        metrics_df.to_csv(csv_path, index=False)
+        print(f"   💾 Metrics saved to CSV (Epoch {epoch+1}/10)")
     
     # PHASE 2: Fine-tune entire model (remaining epochs)
     remaining_epochs = num_epochs - 10
@@ -406,6 +421,11 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
                     'val_rmse': val_rmse,
                 }, os.path.join(save_dir, f'best_model_phase2_{timestamp}.pt'))
                 print(f"  ✓ Saved best model (Phase 2) to: {save_dir}/best_model_phase2_{timestamp}.pt")
+            
+            # Save CSV after every epoch (instant save)
+            metrics_df = pd.DataFrame(epoch_records)
+            metrics_df.to_csv(csv_path, index=False)
+            print(f"   💾 Metrics saved to CSV (Epoch {total_epoch}/{num_epochs})")
     
     # Save final model
     torch.save({
@@ -418,11 +438,11 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
     with open(os.path.join(save_dir, f'history_{timestamp}.json'), 'w') as f:
         json.dump(history, f, indent=2)
     
-    # Save training metrics to CSV
-    import pandas as pd
+    # Final CSV save (already saved every epoch, this is redundant but ensures final state)
     metrics_df = pd.DataFrame(epoch_records)
     metrics_df.to_csv(csv_path, index=False)
-    print(f"\n💾 Training metrics saved to CSV: {csv_path}")
+    print(f"\n💾 Final training metrics saved to CSV: {csv_path}")
+    print(f"   Note: CSV was updated after every epoch automatically")
     
     print("\n" + "="*80)
     print("TRAINING COMPLETE")
@@ -537,6 +557,11 @@ if __name__ == "__main__":
     # Feature engineering
     df_featured = engineer_features(df)
     print(f"✓ Feature engineering complete")
+    
+    # Rename weight_in_kg to weight for consistency
+    if 'weight_in_kg' in df_featured.columns and 'weight' not in df_featured.columns:
+        df_featured.rename(columns={'weight_in_kg': 'weight'}, inplace=True)
+        print(f"✓ Renamed 'weight_in_kg' to 'weight'")
 
     # 2. Prepare data loaders
     data_dict = prepare_data(df_featured, BASE_IMAGE_PATH)

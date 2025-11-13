@@ -12,8 +12,8 @@ import os
 # DATA PATHS
 # ============================================================================
 
-CSV_PATH = "/kaggle/input/disaster/waste_dataset/image.csv"
-BASE_IMAGE_PATH = "/kaggle/input/disaster/waste_dataset"
+CSV_PATH = "/Volumes/TRANSCEND/Dataset/waste_dataset/image.csv"
+BASE_IMAGE_PATH = "/Volumes/TRANSCEND/Dataset/waste_dataset"
 
 
 # ============================================================================
@@ -60,8 +60,13 @@ METADATA_OUTPUT_DIM = 256
 
 # Fusion Network
 FUSION_HIDDEN_DIMS = [512, 256, 128]
-DROPOUT_RATE = 0.2
+DROPOUT_RATE = 0.5  # Increased from 0.2 for stronger regularization
 USE_RESIDUAL = True
+
+# Mutual Attention Fusion (Advanced)
+USE_ATTENTION_FUSION = True  # Set to False for simple late fusion
+ATTENTION_EMBED_DIM = 256    # Embedding dimension for attention
+ATTENTION_NUM_HEADS = 8      # Number of attention heads (must divide ATTENTION_EMBED_DIM)
 
 
 # ============================================================================
@@ -71,10 +76,10 @@ USE_RESIDUAL = True
 # Weight transformation (CRITICAL for wide range: 3.5-3450kg)
 USE_LOG_TRANSFORM = True  # log1p/expm1 transformation
 
-# Data splits
-TRAIN_SPLIT = 0.7
-VAL_SPLIT = 0.1
-TEST_SPLIT = 0.2
+# Data splits - ADJUSTED for 10k dataset
+TRAIN_SPLIT = 0.7   # 7,000 images
+VAL_SPLIT = 0.15    # 1,500 images (increased from 0.1 for more stable validation)
+TEST_SPLIT = 0.15   # 1,500 images
 
 # Data augmentation (training only)
 AUGMENTATION = {
@@ -93,22 +98,24 @@ AUGMENTATION = {
 # Basic training settings
 EPOCHS = 100
 
-# Batch size - AUTO-ADJUSTED for GPU memory
+# Batch size - OPTIMIZED for 10k dataset
+# Balance: Large enough for stable gradients, small enough for regularization
 if DEVICE == "cuda":
     gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
     if gpu_memory_gb >= 24:  # A100, RTX 3090/4090
-        BATCH_SIZE = 256
+        BATCH_SIZE = 48  # Good balance for 7k training images
     elif gpu_memory_gb >= 16:  # V100, RTX 3080
-        BATCH_SIZE = 256
+        BATCH_SIZE = 32  # ~220 batches per epoch
     elif gpu_memory_gb >= 12:  # RTX 3060 Ti
-        BATCH_SIZE = 256
+        BATCH_SIZE = 24  # ~290 batches per epoch
     elif gpu_memory_gb >= 8:  # RTX 3060
-        BATCH_SIZE = 32
+        BATCH_SIZE = 16  # ~440 batches per epoch
     else:  # Lower-end GPUs
-        BATCH_SIZE = 16
+        BATCH_SIZE = 12
     print(f"✓ Auto-adjusted batch size: {BATCH_SIZE} (based on {gpu_memory_gb:.1f} GB GPU)")
+    print(f"  Batches per epoch: ~{7000//BATCH_SIZE} (with 7k training samples)")
 elif DEVICE == "mps":
-    BATCH_SIZE = 32  # Apple Silicon optimized (conservative for ViT)
+    BATCH_SIZE = 24  # Apple Silicon optimized
 else:
     BATCH_SIZE = 8  # CPU
 
@@ -127,8 +134,8 @@ else:
     PERSISTENT_WORKERS = False
 
 # Optimizer settings
-LEARNING_RATE = 1e-4
-WEIGHT_DECAY = 1e-5
+LEARNING_RATE = 1e-5  # Reduced for ViT fine-tuning stability
+WEIGHT_DECAY = 0.05  # Increased from 1e-5 for better regularization (L2 penalty)
 
 # Loss function
 LOSS_TYPE = 'msle'  # Options: msle, huber, mae, mse, smooth_l1

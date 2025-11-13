@@ -17,6 +17,10 @@ from config.config import *
 from models.image_encoder import create_default_image_encoder
 from models.metadata_encoder import MetadataEncoder
 from models.multimodal_fusion import MultimodalWeightPredictor, MultimodalTrainer
+from models.mutual_attention_fusion import (
+    MultimodalWeightPredictor_WithAttention,
+    create_attention_model
+)
 from models.loss_functions import recommend_loss_function
 
 
@@ -70,7 +74,8 @@ def create_optimized_model(
     num_categories: int,
     num_numerical_features: int,
     scaler=None,
-    device: str = DEVICE
+    device: str = DEVICE,
+    use_attention: bool = USE_ATTENTION_FUSION
 ):
     """
     Create optimized model for weight prediction.
@@ -80,6 +85,7 @@ def create_optimized_model(
         num_numerical_features: Number of numerical features
         scaler: Optional StandardScaler for numerical features
         device: Device to use (from config.DEVICE)
+        use_attention: Whether to use mutual attention fusion
     
     Returns:
         model: Configured multimodal model
@@ -91,36 +97,61 @@ def create_optimized_model(
     print("CREATING MODEL")
     print("="*80)
     
-    # 1. Image Encoder
-    print(f"\n1. Image Encoder: {IMAGE_MODEL}")
-    image_encoder = create_default_image_encoder(
-        output_dim=IMAGE_OUTPUT_DIM,
-        pretrained=True,
-        freeze_backbone=False,
-        dropout=DROPOUT_RATE
-    )
+    # Choose fusion method
+    if use_attention:
+        print("🔬 Using MUTUAL ATTENTION FUSION")
+        print(f"   Embed Dim: {ATTENTION_EMBED_DIM}")
+        print(f"   Num Heads: {ATTENTION_NUM_HEADS}")
+    else:
+        print("📦 Using LATE FUSION (Concatenation)")
     
-    # 2. Metadata Encoder
-    print("\n2. Metadata Encoder")
-    metadata_encoder = MetadataEncoder(
-        num_categories=num_categories,
-        category_embedding_dim=CATEGORY_EMBEDDING_DIM,
-        num_numerical_features=num_numerical_features,
-        numerical_hidden_dims=[64, 32],
-        output_dim=METADATA_OUTPUT_DIM,
-        dropout=DROPOUT_RATE,
-        scaler=scaler
-    )
-    
-    # 3. Fusion Model
-    print("\n3. Multimodal Fusion")
-    model = MultimodalWeightPredictor(
-        image_encoder=image_encoder,
-        metadata_encoder=metadata_encoder,
-        fusion_hidden_dims=FUSION_HIDDEN_DIMS,
-        dropout=DROPOUT_RATE,
-        use_residual=USE_RESIDUAL
-    ).to(device)
+    # Create model based on fusion type
+    if use_attention:
+        # Create model with mutual attention
+        model = create_attention_model(
+            num_categories=num_categories,
+            num_numerical_features=num_numerical_features,
+            image_output_dim=IMAGE_OUTPUT_DIM,
+            metadata_output_dim=METADATA_OUTPUT_DIM,
+            category_embedding_dim=CATEGORY_EMBEDDING_DIM,
+            attention_embed_dim=ATTENTION_EMBED_DIM,
+            num_heads=ATTENTION_NUM_HEADS,
+            dropout=DROPOUT_RATE,
+            pretrained_image_encoder=True,
+            scaler=scaler
+        ).to(device)
+    else:
+        # Create model with late fusion (original)
+        # 1. Image Encoder
+        print(f"\n1. Image Encoder: {IMAGE_MODEL}")
+        image_encoder = create_default_image_encoder(
+            output_dim=IMAGE_OUTPUT_DIM,
+            pretrained=True,
+            freeze_backbone=False,
+            dropout=DROPOUT_RATE
+        )
+        
+        # 2. Metadata Encoder
+        print("\n2. Metadata Encoder")
+        metadata_encoder = MetadataEncoder(
+            num_categories=num_categories,
+            category_embedding_dim=CATEGORY_EMBEDDING_DIM,
+            num_numerical_features=num_numerical_features,
+            numerical_hidden_dims=[64, 32],
+            output_dim=METADATA_OUTPUT_DIM,
+            dropout=DROPOUT_RATE,
+            scaler=scaler
+        )
+        
+        # 3. Fusion Model
+        print("\n3. Multimodal Fusion")
+        model = MultimodalWeightPredictor(
+            image_encoder=image_encoder,
+            metadata_encoder=metadata_encoder,
+            fusion_hidden_dims=FUSION_HIDDEN_DIMS,
+            dropout=DROPOUT_RATE,
+            use_residual=USE_RESIDUAL
+        ).to(device)
     
     # 4. Weight Preprocessor
     print("\n4. Weight Preprocessor")

@@ -287,12 +287,22 @@ class MultimodalTrainer:
         self.loss_fn_name = loss_fn
         
         # Optimizer with different learning rates for different components
-        self.optimizer = torch.optim.AdamW([
+        # Handle both MultimodalWeightPredictor and MultimodalWeightPredictor_WithAttention
+        param_groups = [
             {'params': model.image_encoder.parameters(), 'lr': learning_rate * 0.1},
             {'params': model.metadata_encoder.parameters(), 'lr': learning_rate},
-            {'params': model.fusion_network.parameters(), 'lr': learning_rate},
             {'params': model.regression_head.parameters(), 'lr': learning_rate}
-        ], weight_decay=weight_decay)
+        ]
+        
+        # Add fusion layer parameters (different attribute names for different models)
+        if hasattr(model, 'fusion_network'):
+            # Late fusion model
+            param_groups.append({'params': model.fusion_network.parameters(), 'lr': learning_rate})
+        elif hasattr(model, 'attention_fusion'):
+            # Attention fusion model
+            param_groups.append({'params': model.attention_fusion.parameters(), 'lr': learning_rate})
+        
+        self.optimizer = torch.optim.AdamW(param_groups, weight_decay=weight_decay)
         
         # Select loss function
         if isinstance(loss_fn, str):
