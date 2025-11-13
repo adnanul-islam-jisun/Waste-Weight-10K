@@ -118,7 +118,7 @@ if DEVICE == "cuda":
     PIN_MEMORY = True  # Faster data transfer to GPU
     PERSISTENT_WORKERS = True  # Keep workers alive between epochs
 elif DEVICE == "mps":
-    NUM_WORKERS = 0  # MPS works best with single worker
+    NUM_WORKERS = 4  # MPS works best with single worker
     PIN_MEMORY = False  # Not supported on MPS
     PERSISTENT_WORKERS = False
 else:

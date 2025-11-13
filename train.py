@@ -216,7 +216,7 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
     )
     
     # GradScaler for Automatic Mixed Precision (GPU speedup)
-    scaler = torch.cuda.amp.GradScaler() if USE_AMP else None
+    scaler = torch.amp.GradScaler('cuda') if USE_AMP else None
     
     # Create save directory
     os.makedirs(save_dir, exist_ok=True)
