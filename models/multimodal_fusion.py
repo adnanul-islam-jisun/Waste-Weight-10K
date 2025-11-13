@@ -281,8 +281,9 @@ class MultimodalTrainer:
         huber_delta: float = 1.0,
         quantile_alpha: float = 0.5
     ):
-        self.model = model.to(device)
-        self.device = device
+        # Convert device string to torch.device
+        self.device = torch.device(device)
+        self.model = model.to(self.device)
         self.loss_fn_name = loss_fn
         
         # Optimizer with different learning rates for different components
@@ -417,8 +418,8 @@ class MultimodalTrainer:
         
         # Use Automatic Mixed Precision if scaler is provided
         if scaler is not None:
-            # Forward pass with autocast
-            with torch.cuda.amp.autocast():
+            # Forward pass with autocast (updated API)
+            with torch.amp.autocast('cuda'):
                 predictions = self.model(images, category_indices, numerical_features)
                 loss = self.criterion(predictions.squeeze(), targets)
             
@@ -469,7 +470,7 @@ class MultimodalTrainer:
             
             # Use autocast for inference if AMP is enabled
             if use_amp and self.device.type == 'cuda':
-                with torch.cuda.amp.autocast():
+                with torch.amp.autocast('cuda'):
                     predictions = self.model(images, category_indices, numerical_features)
                     loss = self.criterion(predictions.squeeze(), targets)
             else:

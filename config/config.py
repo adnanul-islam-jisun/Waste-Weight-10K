@@ -99,9 +99,9 @@ if DEVICE == "cuda":
     if gpu_memory_gb >= 24:  # A100, RTX 3090/4090
         BATCH_SIZE = 256
     elif gpu_memory_gb >= 16:  # V100, RTX 3080
-        BATCH_SIZE = 128
+        BATCH_SIZE = 256
     elif gpu_memory_gb >= 12:  # RTX 3060 Ti
-        BATCH_SIZE = 128
+        BATCH_SIZE = 256
     elif gpu_memory_gb >= 8:  # RTX 3060
         BATCH_SIZE = 32
     else:  # Lower-end GPUs
