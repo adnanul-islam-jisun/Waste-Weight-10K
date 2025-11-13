@@ -12,8 +12,8 @@ import os
 # DATA PATHS
 # ============================================================================
 
-CSV_PATH = "/content/drive/MyDrive/KaggleData/disaster/waste_dataset/image.csv"
-BASE_IMAGE_PATH = "/content/drive/MyDrive/KaggleData/disaster/waste_dataset"
+CSV_PATH = "//kaggle/input/disaster/waste_dataset/image.csv"
+BASE_IMAGE_PATH = "/kaggle/input/disaster/waste_dataset"
 
 
 # ============================================================================
@@ -101,7 +101,7 @@ if DEVICE == "cuda":
     elif gpu_memory_gb >= 16:  # V100, RTX 3080
         BATCH_SIZE = 128
     elif gpu_memory_gb >= 12:  # RTX 3060 Ti
-        BATCH_SIZE = 64
+        BATCH_SIZE = 128
     elif gpu_memory_gb >= 8:  # RTX 3060
         BATCH_SIZE = 32
     else:  # Lower-end GPUs
