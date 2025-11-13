@@ -20,13 +20,12 @@ from tqdm import tqdm
 import json
 from datetime import datetime
 
-from config.config import CSV_PATH, BASE_IMAGE_PATH
+from config.config import *
 from features.feature_engineering import engineer_features
 from config.training_config import (
     create_optimized_model,
     create_trainer_for_your_data,
-    WeightPreprocessor,
-    TrainingConfig
+    WeightPreprocessor
 )
 from models.loss_functions import recommend_loss_function
 
@@ -155,21 +154,40 @@ def prepare_data(df, base_image_path, test_size=0.2, val_size=0.1, random_state=
         numerical_features, val_transform, weight_preprocessor
     )
     
-    # Create DataLoaders
+    # Create DataLoaders with GPU optimization
     train_loader = DataLoader(
-        train_dataset, batch_size=TrainingConfig.BATCH_SIZE, 
-        shuffle=True, num_workers=TrainingConfig.NUM_WORKERS, pin_memory=True
+        train_dataset, 
+        batch_size=BATCH_SIZE, 
+        shuffle=True, 
+        num_workers=NUM_WORKERS, 
+        pin_memory=PIN_MEMORY,
+        persistent_workers=PERSISTENT_WORKERS if NUM_WORKERS > 0 else False,
+        prefetch_factor=2 if NUM_WORKERS > 0 else None  # Prefetch batches for GPU
     )
     val_loader = DataLoader(
-        val_dataset, batch_size=TrainingConfig.BATCH_SIZE,
-        shuffle=False, num_workers=TrainingConfig.NUM_WORKERS, pin_memory=True
+        val_dataset, 
+        batch_size=BATCH_SIZE,
+        shuffle=False, 
+        num_workers=NUM_WORKERS, 
+        pin_memory=PIN_MEMORY,
+        persistent_workers=PERSISTENT_WORKERS if NUM_WORKERS > 0 else False,
+        prefetch_factor=2 if NUM_WORKERS > 0 else None
     )
     test_loader = DataLoader(
-        test_dataset, batch_size=TrainingConfig.BATCH_SIZE,
-        shuffle=False, num_workers=TrainingConfig.NUM_WORKERS, pin_memory=True
+        test_dataset, 
+        batch_size=BATCH_SIZE,
+        shuffle=False, 
+        num_workers=NUM_WORKERS, 
+        pin_memory=PIN_MEMORY,
+        persistent_workers=PERSISTENT_WORKERS if NUM_WORKERS > 0 else False,
+        prefetch_factor=2 if NUM_WORKERS > 0 else None
     )
     
-    print(f"✓ DataLoaders created (batch_size={TrainingConfig.BATCH_SIZE})")
+    print(f"✓ DataLoaders created:")
+    print(f"  Batch size: {BATCH_SIZE}")
+    print(f"  Workers: {NUM_WORKERS}")
+    print(f"  Pin memory: {PIN_MEMORY}")
+    print(f"  Persistent workers: {PERSISTENT_WORKERS if NUM_WORKERS > 0 else False}")
     
     return {
         'train_loader': train_loader,
@@ -184,10 +202,10 @@ def prepare_data(df, base_image_path, test_size=0.2, val_size=0.1, random_state=
 
 def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
                 device, num_epochs=100, save_dir='./checkpoints'):
-    """Complete training pipeline with progressive training"""
+    """Complete training pipeline with progressive training and GPU optimization"""
     
     print("\n" + "="*80)
-    print("STARTING TRAINING")
+    print("STARTING TRAINING (GPU OPTIMIZED)")
     print("="*80)
     
     # Create trainer
@@ -196,6 +214,9 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
         preprocessor=weight_preprocessor,
         loss_fn=loss_fn
     )
+    
+    # GradScaler for Automatic Mixed Precision (GPU speedup)
+    scaler = torch.cuda.amp.GradScaler() if USE_AMP else None
     
     # Create save directory
     os.makedirs(save_dir, exist_ok=True)
@@ -220,12 +241,14 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
     print(f"  - Loss: {trainer.loss_fn_name.upper()}")
     print(f"  - Preprocessing: LOG transformation")
     print(f"  - Device: {device}")
+    print(f"  - Batch Size: {BATCH_SIZE}")
+    print(f"  - Mixed Precision (AMP): {USE_AMP}")
     print(f"  - Epochs: {num_epochs}")
     print(f"  - Progressive training: Freeze (10 epochs) → Fine-tune")
     print(f"  - Models save path: {save_dir}/")
     print(f"  - Best model will be: best_model_phase2_{timestamp}.pt")
     
-    # Helper function for epoch training
+    # Helper function for epoch training with AMP support
     def run_epoch(loader, is_training=True):
         if is_training:
             model.train()
@@ -239,10 +262,12 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
         with torch.set_grad_enabled(is_training):
             for batch in tqdm(loader, desc="Training" if is_training else "Validation", leave=False):
                 if is_training:
-                    loss = trainer.train_step(batch)
+                    # Training with AMP support
+                    loss = trainer.train_step(batch, scaler=scaler)
                     total_loss += loss
                 else:
-                    loss, preds, targets = trainer.validate_step(batch)
+                    # Validation with AMP support
+                    loss, preds, targets = trainer.validate_step(batch, use_amp=USE_AMP)
                     total_loss += loss
                     all_preds.extend(preds.cpu().numpy())
                     all_targets.extend(targets.cpu().numpy())
@@ -290,11 +315,18 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
             'is_best': False
         })
         
+        # GPU memory monitoring
+        gpu_mem_str = ""
+        if DEVICE.type == 'cuda':
+            allocated = torch.cuda.memory_allocated() / 1024**3
+            reserved = torch.cuda.memory_reserved() / 1024**3
+            gpu_mem_str = f" | GPU Mem: {allocated:.2f}/{reserved:.2f}GB"
+        
         print(f"Epoch [{epoch+1}/10] | "
               f"Train Loss: {train_loss:.4f} | "
               f"Val Loss: {val_loss:.4f} | "
               f"Val MAE: {val_mae:.2f}kg | "
-              f"Val RMSE: {val_rmse:.2f}kg")
+              f"Val RMSE: {val_rmse:.2f}kg{gpu_mem_str}")
         
         # Save best model
         if val_loss < history['best_val_loss']:
@@ -347,11 +379,18 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
                 'is_best': False
             })
             
+            # GPU memory monitoring
+            gpu_mem_str = ""
+            if DEVICE.type == 'cuda':
+                allocated = torch.cuda.memory_allocated() / 1024**3
+                reserved = torch.cuda.memory_reserved() / 1024**3
+                gpu_mem_str = f" | GPU Mem: {allocated:.2f}/{reserved:.2f}GB"
+            
             print(f"Epoch [{total_epoch}/{num_epochs}] | "
                   f"Train Loss: {train_loss:.4f} | "
                   f"Val Loss: {val_loss:.4f} | "
                   f"Val MAE: {val_mae:.2f}kg | "
-                  f"Val RMSE: {val_rmse:.2f}kg")
+                  f"Val RMSE: {val_rmse:.2f}kg{gpu_mem_str}")
             
             # Save best model
             if val_loss < history['best_val_loss']:

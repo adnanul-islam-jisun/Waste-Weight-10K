@@ -1,31 +1,28 @@
-# Model Hyperparameters
+"""
+Hyperparameters (DEPRECATED - Use config.py instead)
 
-# Training hyperparameters
-LEARNING_RATE = 0.001
-WEIGHT_DECAY = 1e-4
-MOMENTUM = 0.9
+This file is kept for backward compatibility.
+All hyperparameters are now in config.py for unified configuration.
+"""
 
-# Learning rate scheduler
-LR_SCHEDULER = "ReduceLROnPlateau"
-LR_PATIENCE = 5
-LR_FACTOR = 0.5
+# Import from unified config
+from config.config import (
+    LEARNING_RATE,
+    WEIGHT_DECAY,
+    BATCH_SIZE,
+    EPOCHS,
+    DROPOUT_RATE,
+    USE_LR_SCHEDULER,
+    LR_SCHEDULER_PATIENCE,
+    LR_SCHEDULER_FACTOR,
+    EARLY_STOPPING_PATIENCE,
+    GRADIENT_CLIP_NORM
+)
 
-# Early stopping
-EARLY_STOPPING_PATIENCE = 10
+# Legacy aliases for backward compatibility
+LR_PATIENCE = LR_SCHEDULER_PATIENCE
+LR_FACTOR = LR_SCHEDULER_FACTOR
 MIN_DELTA = 0.001
 
-# Data augmentation
-AUGMENTATION_ENABLED = True
-ROTATION_RANGE = 20
-WIDTH_SHIFT_RANGE = 0.2
-HEIGHT_SHIFT_RANGE = 0.2
-HORIZONTAL_FLIP = True
-VERTICAL_FLIP = False
+print("⚠️  WARNING: hyperparameters.py is deprecated. Use config.py instead.")
 
-# Model architecture
-DROPOUT_RATE = 0.5
-NUM_CLASSES = None  # Will be set dynamically based on dataset
-
-# Ensemble settings
-ENSEMBLE_MODELS = ["resnet", "efficientnet", "vit"]
-ENSEMBLE_WEIGHTS = [0.4, 0.4, 0.2]

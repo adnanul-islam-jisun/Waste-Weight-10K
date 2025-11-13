@@ -395,8 +395,17 @@ class MultimodalTrainer:
         # Weight: 0.7 MSE + 0.3 MAE (can be tuned)
         return 0.7 * mse + 0.3 * mae
     
-    def train_step(self, batch: dict) -> float:
-        """Single training step."""
+    def train_step(self, batch: dict, scaler=None) -> float:
+        """
+        Single training step with Automatic Mixed Precision (AMP) support.
+        
+        Args:
+            batch: Dictionary containing batch data
+            scaler: GradScaler for AMP (if None, regular training is used)
+        
+        Returns:
+            Loss value as float
+        """
         self.model.train()
         self.optimizer.zero_grad()
         
@@ -406,25 +415,50 @@ class MultimodalTrainer:
         numerical_features = batch['numerical'].to(self.device)
         targets = batch['weight'].to(self.device)
         
-        # Forward pass
-        predictions = self.model(images, category_indices, numerical_features)
-        
-        # Compute loss
-        loss = self.criterion(predictions.squeeze(), targets)
-        
-        # Backward pass
-        loss.backward()
-        
-        # Gradient clipping
-        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-        
-        # Update weights
-        self.optimizer.step()
+        # Use Automatic Mixed Precision if scaler is provided
+        if scaler is not None:
+            # Forward pass with autocast
+            with torch.cuda.amp.autocast():
+                predictions = self.model(images, category_indices, numerical_features)
+                loss = self.criterion(predictions.squeeze(), targets)
+            
+            # Backward pass with gradient scaling
+            scaler.scale(loss).backward()
+            
+            # Gradient clipping (unscale first)
+            scaler.unscale_(self.optimizer)
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+            
+            # Optimizer step with scaler
+            scaler.step(self.optimizer)
+            scaler.update()
+        else:
+            # Regular training (no AMP)
+            predictions = self.model(images, category_indices, numerical_features)
+            loss = self.criterion(predictions.squeeze(), targets)
+            
+            # Backward pass
+            loss.backward()
+            
+            # Gradient clipping
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+            
+            # Optimizer step
+            self.optimizer.step()
         
         return loss.item()
     
-    def validate_step(self, batch: dict) -> tuple:
-        """Single validation step."""
+    def validate_step(self, batch: dict, use_amp: bool = False) -> tuple:
+        """
+        Single validation step with optional AMP support.
+        
+        Args:
+            batch: Dictionary containing batch data
+            use_amp: Whether to use automatic mixed precision
+        
+        Returns:
+            Tuple of (loss, predictions, targets)
+        """
         self.model.eval()
         
         with torch.no_grad():
@@ -433,8 +467,14 @@ class MultimodalTrainer:
             numerical_features = batch['numerical'].to(self.device)
             targets = batch['weight'].to(self.device)
             
-            predictions = self.model(images, category_indices, numerical_features)
-            loss = self.criterion(predictions.squeeze(), targets)
+            # Use autocast for inference if AMP is enabled
+            if use_amp and self.device.type == 'cuda':
+                with torch.cuda.amp.autocast():
+                    predictions = self.model(images, category_indices, numerical_features)
+                    loss = self.criterion(predictions.squeeze(), targets)
+            else:
+                predictions = self.model(images, category_indices, numerical_features)
+                loss = self.criterion(predictions.squeeze(), targets)
         
         return loss.item(), predictions, targets
     
