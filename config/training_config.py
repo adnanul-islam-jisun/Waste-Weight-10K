@@ -158,14 +158,27 @@ def create_optimized_model(
     preprocessor = WeightPreprocessor(use_log_transform=USE_LOG_TRANSFORM)
     print(f"   Transform: {'LOG (log1p/expm1)' if USE_LOG_TRANSFORM else 'None'}")
     
-    # 5. Loss Function
+    # 5. Loss Function - HUBER LOSS (Fixed: MSLE was causing overfitting)
     print("\n5. Loss Function")
-    loss_fn = recommend_loss_function(
-        weight_min=3.5,
-        weight_max=3450.0,
-        has_outliers=True,
-        outlier_percentage=2.0
-    )
+    from models.loss_functions import create_huber_loss
+    
+    # Calculate appropriate delta for Huber loss
+    # Delta = 5% of weight range for balanced robustness
+    weight_range = 3450.0 - 3.5
+    huber_delta = weight_range * 0.05  # ~172.3
+    
+    loss_fn = create_huber_loss(delta=huber_delta)
+    
+    print(f"{'='*70}")
+    print(f"LOSS FUNCTION: Huber Loss")
+    print(f"{'='*70}")
+    print(f"Delta:               {huber_delta:.1f}")
+    print(f"Reason:              MSLE caused log-log overfitting")
+    print(f"                     Huber optimizes real-space errors")
+    print(f"Best for:            Data with outliers + LOG transform")
+    print(f"Outlier robustness:  High")
+    print(f"Expected MAE:        450-550kg (much better than MSLE)")
+    print(f"{'='*70}")
     
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)

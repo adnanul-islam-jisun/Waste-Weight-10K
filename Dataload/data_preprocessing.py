@@ -164,14 +164,18 @@ def prepare_data(df, base_image_path, test_size=0.2, val_size=0.1, random_state=
     numerical_scaler = StandardScaler()
     numerical_scaler.fit(train_df[numerical_features])
     
-    # Transform all splits using the same scaler
-    train_df[numerical_features] = numerical_scaler.transform(train_df[numerical_features])
-    val_df[numerical_features] = numerical_scaler.transform(val_df[numerical_features])
-    test_df[numerical_features] = numerical_scaler.transform(test_df[numerical_features])
+    # Transform all splits using the same scaler - COPY DataFrames to avoid corruption!
+    train_df = train_df.copy()
+    val_df = val_df.copy()
+    test_df = test_df.copy()
+    
+    train_df.loc[:, numerical_features] = numerical_scaler.transform(train_df[numerical_features])
+    val_df.loc[:, numerical_features] = numerical_scaler.transform(val_df[numerical_features])
+    test_df.loc[:, numerical_features] = numerical_scaler.transform(test_df[numerical_features])
     
     print(f"  ✓ Features normalized to mean=0, std=1")
     print(f"  ✓ Scaler fitted on {len(train_df)} training samples")
-    print(f"  ✓ Applied to train/val/test splits")
+    print(f"  ✓ Applied to train/val/test splits (DataFrames preserved)")
     
     # Display normalization stats for verification
     print(f"\n  Normalized ranges (train set):")

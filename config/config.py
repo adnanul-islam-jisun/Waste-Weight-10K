@@ -60,7 +60,7 @@ METADATA_OUTPUT_DIM = 256
 
 # Fusion Network
 FUSION_HIDDEN_DIMS = [512, 256, 128]
-DROPOUT_RATE = 0.5  # Increased from 0.2 for stronger regularization
+DROPOUT_RATE = 0.3  # FIXED: Was 0.5 (too high), now balanced
 USE_RESIDUAL = True
 
 # Mutual Attention Fusion (Advanced)
@@ -134,8 +134,8 @@ else:
     PERSISTENT_WORKERS = False
 
 # Optimizer settings
-LEARNING_RATE = 1e-5  # Reduced for ViT fine-tuning stability
-WEIGHT_DECAY = 0.05  # Increased from 1e-5 for better regularization (L2 penalty)
+LEARNING_RATE = 1e-4  # FIXED: Was 1e-5 (too slow), now proper for frozen encoder training
+WEIGHT_DECAY = 0.01  # FIXED: Was 0.05 (too aggressive), now balanced L2 penalty
 
 # Loss function
 LOSS_TYPE = 'msle'  # Options: msle, huber, mae, mse, smooth_l1
