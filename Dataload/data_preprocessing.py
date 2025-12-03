@@ -169,6 +169,11 @@ def prepare_data(df, base_image_path, test_size=0.2, val_size=0.1, random_state=
     val_df = val_df.copy()
     test_df = test_df.copy()
     
+    # Cast to float to avoid FutureWarning when setting float values into int columns
+    train_df[numerical_features] = train_df[numerical_features].astype(float)
+    val_df[numerical_features] = val_df[numerical_features].astype(float)
+    test_df[numerical_features] = test_df[numerical_features].astype(float)
+    
     train_df.loc[:, numerical_features] = numerical_scaler.transform(train_df[numerical_features])
     val_df.loc[:, numerical_features] = numerical_scaler.transform(val_df[numerical_features])
     test_df.loc[:, numerical_features] = numerical_scaler.transform(test_df[numerical_features])

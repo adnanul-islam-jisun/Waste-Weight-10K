@@ -12,8 +12,18 @@ import os
 # DATA PATHS
 # ============================================================================
 
-CSV_PATH = "/Volumes/TRANSCEND/Dataset/waste_dataset/image.csv"
-BASE_IMAGE_PATH = "/Volumes/TRANSCEND/Dataset/waste_dataset"
+# ============================================================================
+# DATA PATHS
+# ============================================================================
+
+# Use Environment Variable 'DATA_PATH' if set (for Docker), else use default local path
+DEFAULT_LOCAL_PATH = "/Volumes/TRANSCEND/Dataset/waste_dataset"
+DATA_PATH = os.getenv("DATA_PATH", DEFAULT_LOCAL_PATH)
+
+BASE_IMAGE_PATH = DATA_PATH
+CSV_PATH = os.path.join(DATA_PATH, "image.csv")
+
+print(f"✓ Using Data Path: {DATA_PATH}")
 
 
 # ============================================================================
@@ -115,7 +125,8 @@ if DEVICE == "cuda":
     print(f"✓ Auto-adjusted batch size: {BATCH_SIZE} (based on {gpu_memory_gb:.1f} GB GPU)")
     print(f"  Batches per epoch: ~{7000//BATCH_SIZE} (with 7k training samples)")
 elif DEVICE == "mps":
-    BATCH_SIZE = 24  # Apple Silicon optimized
+    BATCH_SIZE = 32  # Increased from 24 for better throughput
+    print(f"✓ Batch size set to {BATCH_SIZE} for MPS (Apple Silicon)")
 else:
     BATCH_SIZE = 8  # CPU
 
@@ -125,20 +136,21 @@ if DEVICE == "cuda":
     PIN_MEMORY = True  # Faster data transfer to GPU
     PERSISTENT_WORKERS = True  # Keep workers alive between epochs
 elif DEVICE == "mps":
-    NUM_WORKERS = 4  # MPS works best with single worker
-    PIN_MEMORY = False  # Not supported on MPS
-    PERSISTENT_WORKERS = False
+    # MPS Optimization
+    NUM_WORKERS = min(4, os.cpu_count() or 2)  # Allow parallel data loading
+    PIN_MEMORY = False  # Usually better False for MPS (Unified Memory)
+    PERSISTENT_WORKERS = True  # CRITICAL: Keep workers alive to reduce overhead
 else:
     NUM_WORKERS = 2
     PIN_MEMORY = False
     PERSISTENT_WORKERS = False
 
 # Optimizer settings
-LEARNING_RATE = 1e-4  # FIXED: Was 1e-5 (too slow), now proper for frozen encoder training
-WEIGHT_DECAY = 0.01  # FIXED: Was 0.05 (too aggressive), now balanced L2 penalty
+LEARNING_RATE = 1e-4  # Initial LR
+WEIGHT_DECAY = 1e-4  # Reduced from 0.01 to allow more adaptation
 
 # Loss function
-LOSS_TYPE = 'msle'  # Options: msle, huber, mae, mse, smooth_l1
+LOSS_TYPE = 'mae'  # Changed from 'msle'/'huber' to 'mae' (L1 Loss) for sharper predictions
 
 # Progressive training (freeze → fine-tune)
 FREEZE_IMAGE_ENCODER_EPOCHS = 10  # Freeze ViT for first N epochs

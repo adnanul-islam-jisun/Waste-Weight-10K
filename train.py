@@ -32,7 +32,7 @@ from Dataload.data_preprocessing import prepare_data
 # ============================================================================
 
 def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
-                device, num_epochs=EPOCHS, save_dir='./checkpoints'):
+                device, num_epochs=EPOCHS, save_dir='./checkpoints', resume=True):
     """Complete training pipeline with progressive training and GPU optimization"""
     
     print("\n" + "="*80)
@@ -62,6 +62,34 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
         'best_val_loss': float('inf'),
         'best_epoch': 0
     }
+    
+    start_epoch = 0
+    
+    # Resume from checkpoint if exists
+    latest_checkpoint_path = os.path.join(save_dir, 'latest_checkpoint.pt')
+    if resume and os.path.exists(latest_checkpoint_path):
+        print(f"\n🔄 Found checkpoint at {latest_checkpoint_path}. Resuming...")
+        checkpoint = torch.load(latest_checkpoint_path, map_location=device)
+        
+        # Load model state
+        model.load_state_dict(checkpoint['model_state_dict'])
+        
+        # Load optimizer state
+        trainer.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        
+        # Load scaler state if exists
+        if scaler and 'scaler_state_dict' in checkpoint:
+            scaler.load_state_dict(checkpoint['scaler_state_dict'])
+            
+        # Load history and epoch
+        if 'history' in checkpoint:
+            history = checkpoint['history']
+        start_epoch = checkpoint['epoch']
+        
+        print(f"   ✓ Resumed from epoch {start_epoch}")
+        print(f"   ✓ Best validation loss so far: {history['best_val_loss']:.4f}")
+    else:
+        print(f"\n🆕 Starting new training session")
     
     # CSV logging setup
     csv_path = os.path.join(save_dir, f'training_log_{timestamp}.csv')
@@ -126,7 +154,11 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
     # Track all epochs for CSV
     epoch_records = []
     
-    for epoch in range(10):
+    for epoch in range(start_epoch, 10):
+        # Skip if already done (when resuming from > 10 epochs)
+        if epoch >= 10: 
+            break
+            
         train_loss = run_epoch(train_loader, is_training=True)
         val_loss, val_mae, val_rmse = run_epoch(val_loader, is_training=False)
         
@@ -178,9 +210,24 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
         metrics_df = pd.DataFrame(epoch_records)
         metrics_df.to_csv(csv_path, index=False)
         print(f"   💾 Metrics saved to CSV (Epoch {epoch+1}/10)")
+        
+        # Save LATEST checkpoint (for resuming)
+        torch.save({
+            'epoch': epoch + 1,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': trainer.optimizer.state_dict(),
+            'scaler_state_dict': scaler.state_dict() if scaler else None,
+            'history': history,
+            'train_loss': train_loss,
+            'val_loss': val_loss,
+        }, os.path.join(save_dir, 'latest_checkpoint.pt'))
+        print(f"   💾 Checkpoint saved: {save_dir}/latest_checkpoint.pt")
     
     # PHASE 2: Fine-tune entire model (remaining epochs)
-    remaining_epochs = num_epochs - 10
+    # If we resumed from > 10 epochs, we need to adjust the range
+    current_epoch = max(10, start_epoch)
+    remaining_epochs = num_epochs - current_epoch
+    
     if remaining_epochs > 0:
         print("\n" + "-"*80)
         print(f"PHASE 2: Fine-tuning ENTIRE model ({remaining_epochs} epochs)")
@@ -194,15 +241,8 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
         print(f"✓ Reduced learning rate by 10x for fine-tuning")
         
         for epoch in range(remaining_epochs):
-            train_loss = run_epoch(train_loader, is_training=True)
-            val_loss, val_mae, val_rmse = run_epoch(val_loader, is_training=False)
-            
-            history['train_loss'].append(train_loss)
-            history['val_loss'].append(val_loss)
-            history['val_mae'].append(val_mae)
-            history['val_rmse'].append(val_rmse)
-            
-            total_epoch = 10 + epoch + 1
+            # Calculate actual epoch number
+            total_epoch = current_epoch + epoch + 1
             
             # Record for CSV
             epoch_records.append({
@@ -247,6 +287,18 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
             metrics_df = pd.DataFrame(epoch_records)
             metrics_df.to_csv(csv_path, index=False)
             print(f"   💾 Metrics saved to CSV (Epoch {total_epoch}/{num_epochs})")
+            
+            # Save LATEST checkpoint (for resuming)
+            torch.save({
+                'epoch': total_epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': trainer.optimizer.state_dict(),
+                'scaler_state_dict': scaler.state_dict() if scaler else None,
+                'history': history,
+                'train_loss': train_loss,
+                'val_loss': val_loss,
+            }, os.path.join(save_dir, 'latest_checkpoint.pt'))
+            print(f"   💾 Checkpoint saved: {save_dir}/latest_checkpoint.pt")
     
     # Save final model
     torch.save({

@@ -163,9 +163,13 @@ def create_optimized_model(
     from models.loss_functions import create_huber_loss
     
     # Calculate appropriate delta for Huber loss
-    # Delta = 5% of weight range for balanced robustness
-    weight_range = 3450.0 - 3.5
-    huber_delta = weight_range * 0.05  # ~172.3
+    if USE_LOG_TRANSFORM:
+        # For log-space (values ~1.2 to 8.1), a delta of 1.0 is standard/robust
+        huber_delta = 1.0
+    else:
+        # For raw weight range (3.5 - 3450), use 5% of range
+        weight_range = 3450.0 - 3.5
+        huber_delta = weight_range * 0.05  # ~172.3
     
     loss_fn = create_huber_loss(delta=huber_delta)
     

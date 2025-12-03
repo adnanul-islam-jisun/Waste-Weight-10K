@@ -1,0 +1,33 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.gitignore
+.DS_Store
+.idea/
+.vscode/
+# Exclude large data and checkpoints (mount these as volumes instead)
+checkpoints/
+logs/
+data/
+saved_models/
+
+# macOS metadata files (cause build errors on external drives)
+._*
+**/._*
+**/.DS_Store
