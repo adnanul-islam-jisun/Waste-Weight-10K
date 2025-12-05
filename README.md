@@ -1,9 +1,9 @@
 # Weight Prediction System - Multimodal Deep Learning
 
-> **Vision Transformer + Metadata Fusion for Product Weight Estimation**  
+> **Vision Transformer + Mutual Attention Fusion for Product Weight Estimation**  
 > **🚀 GPU-Optimized with Automatic Mixed Precision (AMP)**
 
-Predicts product weights (3.5 - 3,450 kg) using RGB images and metadata features with state-of-the-art Vision Transformers and multimodal fusion architecture.
+Predicts product weights (50 - 3,450 kg) using RGB images and metadata features with state-of-the-art Vision Transformers and **Mutual Attention Fusion** architecture for advanced cross-modal feature interaction.
 
 ---
 
@@ -13,124 +13,347 @@ Predicts product weights (3.5 - 3,450 kg) using RGB images and metadata features
 # 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Run training (50 epochs, progressive training, GPU-optimized)
+# 2. Run training (120 epochs, progressive training, GPU-optimized)
 python train.py
 
 # 3. Check results
 cat checkpoints/training_log_*.csv
 ```
 
-**🚀 GPU Optimizations:**
-- **2-3x faster training** with Automatic Mixed Precision (AMP)
-- **50% memory reduction** - train with larger batch sizes
-- **Auto batch sizing** based on GPU memory
-- **Pin memory + persistent workers** for efficient data loading
-
-See [GPU_OPTIMIZATION_GUIDE.md](GPU_OPTIMIZATION_GUIDE.md) for details.
-
 ---
 
 ## 🏗️ Complete System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    MULTIMODAL WEIGHT PREDICTION SYSTEM                       │
-│                   Vision Transformer + Metadata Fusion                       │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                      MULTIMODAL WEIGHT PREDICTION SYSTEM                         │
+│                  Vision Transformer + Stacked Mutual Attention                   │
+│                            ~88M Total Parameters                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 1. DATA LAYER                                                                │
-└─────────────────────────────────────────────────────────────────────────────┘
+                                    INPUT
+                                      │
+                    ┌─────────────────┴─────────────────┐
+                    │                                   │
+                    ▼                                   ▼
+    ┌───────────────────────────────┐   ┌───────────────────────────────────────┐
+    │         RGB IMAGE             │   │            METADATA                    │
+    │       (224 × 224 × 3)         │   │  Category (Type) + 9 Numerical        │
+    └───────────────┬───────────────┘   └───────────────────┬───────────────────┘
+                    │                                       │
+                    ▼                                       ▼
+    ┌───────────────────────────────┐   ┌───────────────────────────────────────┐
+    │      IMAGE ENCODER            │   │       METADATA ENCODER                │
+    │   ViT-B/16 (Vision            │   │                                       │
+    │    Transformer)               │   │  ┌─────────────┐  ┌─────────────────┐ │
+    │                               │   │  │ Embedding   │  │  MLP Branch     │ │
+    │  ┌─────────────────────────┐  │   │  │ (32-dim)    │  │ 128→64→32       │ │
+    │  │ Patch Embedding         │  │   │  │             │  │ BatchNorm+GELU  │ │
+    │  │ 16×16 patches → 196     │  │   │  └──────┬──────┘  └────────┬────────┘ │
+    │  └───────────┬─────────────┘  │   │         │                  │          │
+    │              ▼                │   │         └────────┬─────────┘          │
+    │  ┌─────────────────────────┐  │   │                  ▼                    │
+    │  │ 12 Transformer Blocks   │  │   │     ┌────────────────────────┐        │
+    │  │ • Multi-Head Attention  │  │   │     │    Concatenate         │        │
+    │  │ • Layer Normalization   │  │   │     │    32 + 32 = 64        │        │
+    │  │ • MLP (3072-dim)        │  │   │     └───────────┬────────────┘        │
+    │  │ • 12 Attention Heads    │  │   │                 ▼                     │
+    │  └───────────┬─────────────┘  │   │     ┌────────────────────────┐        │
+    │              ▼                │   │     │    Fusion MLP          │        │
+    │  ┌─────────────────────────┐  │   │     │    64→512→256          │        │
+    │  │ [CLS] Token Extraction  │  │   │     │    BatchNorm+ReLU      │        │
+    │  │ → 768-dimensional       │  │   │     └───────────┬────────────┘        │
+    │  └─────────────────────────┘  │   │                 │                     │
+    │                               │   │                 ▼                     │
+    │  Parameters: ~86M             │   │     Output: 256-dimensional           │
+    │  Pretrained: ImageNet-1K      │   │     Parameters: ~50K                  │
+    └───────────────┬───────────────┘   └───────────────────┬───────────────────┘
+                    │                                       │
+                    │         768-dim                       │        256-dim
+                    │                                       │
+                    └───────────────────┬───────────────────┘
+                                        │
+                                        ▼
+    ┌─────────────────────────────────────────────────────────────────────────────┐
+    │               ⭐ STACKED MUTUAL ATTENTION FUSION (2 Layers)                  │
+    │                         (Bidirectional Cross-Attention)                      │
+    ├─────────────────────────────────────────────────────────────────────────────┤
+    │                                                                              │
+    │    Visual Features (768-dim)              Metadata Features (256-dim)        │
+    │           │                                        │                         │
+    │           ▼                                        ▼                         │
+    │    ┌──────────────┐                         ┌──────────────┐                 │
+    │    │  Project to  │                         │              │                 │
+    │    │   256-dim    │                         │   256-dim    │                 │
+    │    └──────┬───────┘                         └──────┬───────┘                 │
+    │           │                                        │                         │
+    │           ▼                                        ▼                         │
+    │  ┌─────────────────────────────────────────────────────────────────────┐    │
+    │  │              BIDIRECTIONAL CROSS-ATTENTION (Layer 1 & 2)            │    │
+    │  │                                                                      │    │
+    │  │   ┌────────────────────────┐      ┌────────────────────────┐        │    │
+    │  │   │  Visual → Metadata     │      │  Metadata → Visual     │        │    │
+    │  │   │                        │      │                        │        │    │
+    │  │   │  Q: Visual features    │      │  Q: Metadata features  │        │    │
+    │  │   │  K,V: Metadata         │      │  K,V: Visual           │        │    │
+    │  │   │                        │      │                        │        │    │
+    │  │   │  "What metadata is     │      │  "What visual features │        │    │
+    │  │   │   relevant to this     │      │   support this         │        │    │
+    │  │   │   visual pattern?"     │      │   metadata?"           │        │    │
+    │  │   │                        │      │                        │        │    │
+    │  │   │  8 Attention Heads     │      │  8 Attention Heads     │        │    │
+    │  │   │  Head dim: 32          │      │  Head dim: 32          │        │    │
+    │  │   └───────────┬────────────┘      └───────────┬────────────┘        │    │
+    │  │               │                               │                      │    │
+    │  │               ▼                               ▼                      │    │
+    │  │         LayerNorm                       LayerNorm                    │    │
+    │  │               │                               │                      │    │
+    │  └───────────────┴───────────────┬───────────────┴──────────────────────┘    │
+    │                                  │                                           │
+    │                                  ▼                                           │
+    │    ┌─────────────────────────────────────────────────────────────────────┐  │
+    │    │                    FEATURE CONCATENATION                            │  │
+    │    │                                                                      │  │
+    │    │  [V→M Attended] + [M→V Attended] + [V Residual] + [M Residual]      │  │
+    │    │      256-dim   +     256-dim    +    256-dim   +    256-dim         │  │
+    │    │                                                                      │  │
+    │    │                    = 1024-dimensional                                │  │
+    │    └──────────────────────────────┬──────────────────────────────────────┘  │
+    │                                   │                                          │
+    │                                   ▼                                          │
+    │    ┌─────────────────────────────────────────────────────────────────────┐  │
+    │    │                      FUSION MLP                                      │  │
+    │    │              1024 → 512 → ReLU → Dropout(0.2)                       │  │
+    │    │              512 → 256 → ReLU → LayerNorm                           │  │
+    │    └──────────────────────────────┬──────────────────────────────────────┘  │
+    │                                   │                                          │
+    │                         Output: 256-dimensional                              │
+    └───────────────────────────────────┬─────────────────────────────────────────┘
+                                        │
+                                        ▼
+    ┌─────────────────────────────────────────────────────────────────────────────┐
+    │                         REGRESSION HEAD                                      │
+    ├─────────────────────────────────────────────────────────────────────────────┤
+    │                                                                              │
+    │     256 → Linear → GELU → LayerNorm → Dropout(0.1)                           │
+    │             ↓                                                                │
+    │     128 → Linear → GELU → LayerNorm → Dropout(0.06)                          │
+    │             ↓                                                                │
+    │      64 → Linear → GELU → Dropout(0.04)                                      │
+    │             ↓                                                                │
+    │           1 (Softplus → log(weight) prediction)                              │
+    │                                                                              │
+    └───────────────────────────────────┬─────────────────────────────────────────┘
+                                        │
+                                        ▼
+                              ┌─────────────────┐
+                              │   expm1(pred)   │  ← Inverse log transform
+                              │   = weight (kg) │
+                              └─────────────────┘
+```
 
-    CSV: product_metadata.csv (10,421 samples)
-    ├── image_path          → Product images (224×224 RGB)
-    ├── Type                → Categorical (metal, wood, plastic, etc.)
-    ├── V_x, V_y, V_z      → Volume dimensions
-    ├── D_x, D_y           → Distance/viewing parameters
-    └── weight_in_kg       → Target (3.5 - 3,450 kg)
-           │
-           ├─► Feature Engineering (features/feature_engineering.py)
-           │   ├── volume_proxy = V_x × V_y × V_z
-           │   ├── apparent_Vx = V_x / (D_x + ε)
-           │   ├── apparent_Vy = V_y / (D_x + ε)
-           │   ├── apparent_Vz = V_z / (D_x + ε)
-           │   ├── solid_angle_proxy = (V_x × V_y) / (D_x² + ε)
-           │   └── view_angle_rad = arctan2(D_y, D_x)
-           │   → Total: 11 numerical features
-           │
-           └─► Preprocessing (config/training_config.py)
-               ├── LOG Transformation: log1p(weight)
-               ├── Split: 70% train / 10% val / 20% test
-               └── Augmentation: Resize, Flip, ColorJitter
+---
 
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 2. MODEL ARCHITECTURE (86.8M parameters)                                    │
-└─────────────────────────────────────────────────────────────────────────────┘
+## 📊 Feature Engineering Pipeline
 
-┌─────────────────────────────┐       ┌──────────────────────────────────┐
-│   IMAGE ENCODER             │       │   METADATA ENCODER               │
-│   models/image_encoder.py   │       │   models/metadata_encoder.py     │
-├─────────────────────────────┤       ├──────────────────────────────────┤
-│ Vision Transformer B/16     │       │ Categorical Branch:              │
-│ ├─ Input: [B, 3, 224, 224] │       │ ├─ Embedding(Type → 32-dim)     │
-│ ├─ Patch: 16×16             │       │ └─ Dropout(0.1)                  │
-│ ├─ 12 Transformer Layers    │       │                                  │
-│ ├─ Multi-Head Attention     │       │ Numerical Branch:                │
-│ ├─ Pretrained (ImageNet)    │       │ ├─ Input: 11 features           │
-│ └─ Output: 768-dim          │       │ ├─ MLP [11→64→32]               │
-│                             │       │ └─ Output: 256-dim               │
-│ Parameters: ~86M            │       │ Parameters: ~15K                 │
-└─────────────────────────────┘       └──────────────────────────────────┘
-           │                                        │
-           └────────────────┬───────────────────────┘
-                           │
-                           ▼
-           ┌────────────────────────────────────────┐
-           │   MULTIMODAL FUSION                    │
-           │   models/multimodal_fusion.py          │
-           ├────────────────────────────────────────┤
-           │ Concatenate: [768 + 256] = 1024-dim    │
-           │         ↓                              │
-           │ Fusion MLP: [1024→512→256→128]        │
-           │ ├─ BatchNorm + ReLU + Dropout(0.2)     │
-           │ └─ Residual Connections                │
-           │         ↓                              │
-           │ Regression Head: [128 → 1]             │
-           │         ↓                              │
-           │ Output: log(weight)                    │
-           └────────────────────────────────────────┘
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        FEATURE ENGINEERING (20 Features)                         │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  RAW INPUT: V_x, V_y, V_z (Volume dims), D_x, D_y (Distance)                    │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐│
+│  │ SIZE FEATURES (5) - Primary weight determinants                             ││
+│  │                                                                              ││
+│  │  log_volume        = log1p(V_x × V_y × V_z)                                 ││
+│  │  log_surface_area  = log1p(2×(V_x×V_y + V_y×V_z + V_x×V_z))                ││
+│  │  max_dimension     = max(V_x, V_y, V_z)                                     ││
+│  │  log_max_dimension = log1p(max_dimension)                                   ││
+│  │  log_geo_mean_dim  = log1p((V_x × V_y × V_z)^(1/3))                         ││
+│  └─────────────────────────────────────────────────────────────────────────────┘│
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐│
+│  │ SHAPE FEATURES (8) - Density & structural indicators                        ││
+│  │                                                                              ││
+│  │  aspect_ratio_xy   = V_x / (V_y + ε)                                        ││
+│  │  aspect_ratio_xz   = V_x / (V_z + ε)                                        ││
+│  │  aspect_ratio_yz   = V_y / (V_z + ε)                                        ││
+│  │  compactness       = min_dim / (max_dim + ε)     [0=elongated, 1=cube]     ││
+│  │  flatness          = min_dim / (mid_dim + ε)                                ││
+│  │  elongation        = max_dim / (mid_dim + ε)                                ││
+│  │  sphericity        = (π^⅓ × (6V)^⅔) / (A + ε)   [closeness to sphere]     ││
+│  │  log_vol_surf_ratio= log1p(volume / (surface_area + ε))                     ││
+│  └─────────────────────────────────────────────────────────────────────────────┘│
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐│
+│  │ PERSPECTIVE FEATURES (4) - Camera/viewing adjustments                       ││
+│  │                                                                              ││
+│  │  log_distance        = log1p(√(D_x² + D_y²))                                ││
+│  │  log_apparent_volume = log1p(volume / (D_x² + ε))   [inverse square law]   ││
+│  │  view_angle_rad      = arctan2(D_y, D_x)                                    ││
+│  │  depth_ratio         = D_x / (distance + ε)                                 ││
+│  └─────────────────────────────────────────────────────────────────────────────┘│
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐│
+│  │ INTERACTION FEATURES (3) - Non-linear relationships                         ││
+│  │                                                                              ││
+│  │  volume_compactness  = log_volume × compactness                             ││
+│  │  surface_sphericity  = log_surface_area × sphericity                        ││
+│  │  size_dist_interact  = log_volume / (log_distance + ε)                      ││
+│  └─────────────────────────────────────────────────────────────────────────────┘│
+│                                                                                  │
+│  OUTPUT: 20 engineered features                                                 │
+│          → 9 selected features after correlation filtering                      │
+│          → Normalized via StandardScaler (mean=0, std=1)                        │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐│
+│  │ SELECTED FEATURES (9) - Used for training after removing correlations      ││
+│  │                                                                              ││
+│  │  ✓ log_volume          (size - primary weight determinant)                  ││
+│  │  ✓ log_max_dimension   (size)                                               ││
+│  │  ✓ aspect_ratio_xy     (shape)                                              ││
+│  │  ✓ aspect_ratio_yz     (shape)                                              ││
+│  │  ✓ compactness         (shape - how cube-like)                              ││
+│  │  ✓ elongation          (shape - how stretched)                              ││
+│  │  ✓ log_vol_surface_ratio (shape)                                            ││
+│  │  ✓ log_distance        (perspective)                                        ││
+│  │  ✓ surface_sphericity  (interaction)                                        ││
+│  └─────────────────────────────────────────────────────────────────────────────┘│
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
 
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 3. TRAINING STRATEGY (Progressive Training)                                 │
-└─────────────────────────────────────────────────────────────────────────────┘
+---
 
-    PHASE 1: Warm-up (10 epochs)
-    ├─ FREEZE: Image Encoder (ViT)
-    ├─ TRAIN: Metadata Encoder + Fusion Network
-    └─ LR: 1e-4 (fusion layers)
-              ↓
-    PHASE 2: Fine-tuning (40 epochs)
-    ├─ UNFREEZE: All parameters
-    ├─ TRAIN: End-to-end
-    └─ LR: 1e-5 (ViT), 1e-5 (fusion)
+## 🔬 Training Pipeline
 
-    Loss: MSLE (Mean Squared Log Error)
-    Optimizer: AdamW (weight_decay=1e-5)
-    Techniques: Gradient Clipping, Early Stopping
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           TRAINING STRATEGY                                      │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │  PHASE 1: WARM-UP (Epochs 1-10)                                         │    │
+│  ├─────────────────────────────────────────────────────────────────────────┤    │
+│  │                                                                          │    │
+│  │  🔒 FROZEN:  Image Encoder (ViT) - 86M parameters locked                │    │
+│  │  🔓 TRAINED: Metadata Encoder + Attention Block + Regression Head       │    │
+│  │                                                                          │    │
+│  │  Learning Rate: 1e-4                                                     │    │
+│  │  Purpose: Learn fusion without disturbing pretrained ViT weights        │    │
+│  │                                                                          │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                      │                                           │
+│                                      ▼                                           │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │  PHASE 2: FINE-TUNING (Epochs 11-120)                                   │    │
+│  ├─────────────────────────────────────────────────────────────────────────┤    │
+│  │                                                                          │    │
+│  │  🔓 UNFROZEN: All parameters trainable                                  │    │
+│  │                                                                          │    │
+│  │  Learning Rates (Differentiated):                                        │    │
+│  │    • Image Encoder: 2e-5 (×0.2 reduction - careful fine-tuning)         │    │
+│  │    • Other layers:  5e-5 (×0.5 reduction - maintain adaptation)         │    │
+│  │                                                                          │    │
+│  │  Purpose: End-to-end optimization with ViT adaptation                   │    │
+│  │                                                                          │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │  OPTIMIZATION SETTINGS                                                   │    │
+│  ├─────────────────────────────────────────────────────────────────────────┤    │
+│  │                                                                          │    │
+│  │  Optimizer:      AdamW (weight_decay=1e-4)                              │    │
+│  │  Loss Function:  MSLE (Mean Squared Log Error)                          │    │
+│  │  Target Transform: log1p(weight) → expm1(prediction)                    │    │
+│  │  LR Scheduler:   CosineAnnealingWarmRestarts (T_0=20, T_mult=2)         │    │
+│  │  Gradient Clip:  max_norm=1.0                                           │    │
+│  │  Mixed Precision: AMP (FP16) on CUDA                                    │    │
+│  │                                                                          │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
 
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 4. OUTPUTS & TRACKING                                                       │
-└─────────────────────────────────────────────────────────────────────────────┘
+---
 
-    checkpoints/
-    ├── training_log_*.csv                ⭐ Track every epoch
-    ├── best_model_phase1_*.pt            (Phase 1 best)
-    ├── best_model_phase2_*.pt            ⭐ BEST MODEL
-    ├── final_model_*.pt                  (Last epoch)
-    └── history_*.json                    (All metrics)
+## 📈 Loss Function: MSLE (Mean Squared Log Error)
 
-    CSV Columns: epoch, phase, train_loss, val_loss, val_mae_kg, 
-                 val_rmse_kg, is_best
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                     MSLE - OPTIMAL FOR WIDE WEIGHT RANGES                        │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  Formula:   MSLE = mean( (log(1 + pred) - log(1 + target))² )                   │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │  WHY MSLE IS OPTIMAL FOR WEIGHT PREDICTION:                             │    │
+│  │                                                                          │    │
+│  │  Weight Range: 50 kg → 3,450 kg (69× ratio)                             │    │
+│  │                                                                          │    │
+│  │  Problem with MAE/MSE:                                                   │    │
+│  │    • 100kg error on 3000kg object: 3.3% relative error                  │    │
+│  │    • 100kg error on 100kg object:  100% relative error                  │    │
+│  │    • MAE/MSE treats both equally → model ignores light objects          │    │
+│  │                                                                          │    │
+│  │  MSLE Solution:                                                          │    │
+│  │    • Works in LOG space: log(100) ≈ 4.6, log(3000) ≈ 8.0               │    │
+│  │    • 10% relative error = same loss regardless of absolute weight       │    │
+│  │    • Automatically balances learning across weight range                │    │
+│  │                                                                          │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+│  Implementation:                                                                 │
+│    1. Target: weight_log = log1p(weight_kg)                                     │
+│    2. Model predicts: pred_log                                                  │
+│    3. Loss: mean((pred_log - weight_log)²)                                      │
+│    4. Inference: weight_kg = expm1(pred_log)                                    │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🧠 Attention Mechanism Details
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    MULTI-HEAD CROSS-ATTENTION (8 Heads)                          │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  Attention(Q, K, V) = softmax(Q × Kᵀ / √d_k) × V                                │
+│                                                                                  │
+│  Where:                                                                          │
+│    • Q (Query):   256-dim → 8 heads × 32-dim                                    │
+│    • K (Key):     256-dim → 8 heads × 32-dim                                    │
+│    • V (Value):   256-dim → 8 heads × 32-dim                                    │
+│    • d_k = 32 (head dimension)                                                  │
+│    • √d_k scaling prevents gradient explosion                                   │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │  BRANCH 1: Visual → Metadata                                            │    │
+│  │                                                                          │    │
+│  │  Query:     Visual features (what visual pattern am I?)                 │    │
+│  │  Key/Value: Metadata features (what attributes are available?)          │    │
+│  │  Output:    Visual features enriched with relevant metadata context     │    │
+│  │                                                                          │    │
+│  │  Example: "This looks like a large cylindrical shape → attend to        │    │
+│  │           'cylinder' category and high volume features"                 │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │  BRANCH 2: Metadata → Visual                                            │    │
+│  │                                                                          │    │
+│  │  Query:     Metadata features (what attributes do I have?)             │    │
+│  │  Key/Value: Visual features (what visual evidence supports this?)       │    │
+│  │  Output:    Metadata features enriched with visual confirmation         │    │
+│  │                                                                          │    │
+│  │  Example: "Type='metal' + high volume → attend to shiny surface         │    │
+│  │           and dense appearance patterns"                                │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -138,98 +361,176 @@ See [GPU_OPTIMIZATION_GUIDE.md](GPU_OPTIMIZATION_GUIDE.md) for details.
 ## 📂 Project Structure
 
 ```
-Weight_mannagemner/
+Weight_management/
 │
 ├── train.py                   ⭐ MAIN TRAINING SCRIPT
-│   ├─ WeightPredictionDataset
-│   ├─ prepare_data()
-│   ├─ train_model()
-│   └─ evaluate_model()
+│   ├─ train_model()           → Progressive training with AMP
+│   ├─ evaluate_model()        → Test set evaluation
+│   └─ Main pipeline           → Data loading → Training → Evaluation
+│
+├── predict.py                 → Inference pipeline
 │
 ├── config/
-│   ├── config.py              → Paths (CSV, images)
-│   ├── training_config.py     ⭐ Hyperparameters & model creation
-│   │   ├─ TrainingConfig (BATCH_SIZE=8, EPOCHS=100, etc.)
-│   │   ├─ WeightPreprocessor (LOG transformation)
-│   │   ├─ create_optimized_model()
-│   │   └─ create_trainer_for_your_data()
-│   └── hyperparameters.py
+│   ├── config.py              ⭐ UNIFIED CONFIGURATION
+│   │   ├─ Device auto-detection (CUDA/MPS/CPU)
+│   │   ├─ Model architecture settings
+│   │   ├─ Training hyperparameters
+│   │   └─ GPU optimizations
+│   ├── training_config.py     → Model creation & weight preprocessing
+│   └── hyperparameters.py     → Additional hyperparameters
 │
 ├── models/
-│   ├── image_encoder.py       ⭐ ViT-B/16, ViT-L/16, ViT-H/14
-│   ├── metadata_encoder.py    → Categorical + Numerical features
-│   ├── multimodal_fusion.py   → Fusion + MultimodalTrainer
+│   ├── image_encoder.py       ⭐ Vision Transformer (ViT-B/16)
+│   │   ├─ 86M parameters
+│   │   ├─ 768-dim output
+│   │   └─ ImageNet pretrained
+│   │
+│   ├── metadata_encoder.py    → Categorical + Numerical encoder
+│   │   ├─ Embedding layer (32-dim)
+│   │   ├─ MLP for numerical features
+│   │   └─ 256-dim output
+│   │
+│   ├── mutual_attention_fusion.py  ⭐ CROSS-ATTENTION FUSION
+│   │   ├─ MultiHeadCrossAttention
+│   │   ├─ MutualAttentionBlock
+│   │   └─ MultimodalWeightPredictor_WithAttention
+│   │
+│   ├── multimodal_fusion.py   → Late fusion (simple concatenation)
 │   └── loss_functions.py      ⭐ 10 loss options (MSLE recommended)
 │
 ├── features/
-│   ├── feature_engineering.py → Creates 11 engineered features
+│   ├── feature_engineering.py → Creates 20 physics-informed features
+│   │   ├─ Size features (5)
+│   │   ├─ Shape features (8)
+│   │   ├─ Perspective features (4)
+│   │   └─ Interaction features (3)
 │   └── feature_selection.py
 │
 ├── Dataload/
-│   ├── dataloader.py
-│   └── data_preprocessing.py
+│   ├── data_preprocessing.py  ⭐ Data pipeline
+│   │   ├─ StandardScaler normalization
+│   │   ├─ Train/Val/Test splits
+│   │   ├─ Image augmentation
+│   │   └─ DataLoader creation
+│   └── dataloader.py
 │
 ├── utils/
 │   ├── helpers.py
 │   ├── visualization.py
 │   └── metrics.py
 │
-├── data/
-│   ├── product_metadata.csv   → 10,421 records
-│   └── images/                → Product images
-│
 ├── checkpoints/               → Saved models & metrics
-│   ├── training_log_*.csv     ⭐ Epoch tracking
-│   ├── best_model_*.pt        ⭐ Best models
-│   └── history_*.json
+│   ├── training_log_*.csv     ⭐ Epoch-by-epoch metrics
+│   ├── best_model_phase1_*.pt → Best model (Phase 1)
+│   ├── best_model_phase2_*.pt ⭐ BEST MODEL (use this!)
+│   ├── latest_checkpoint.pt   → Resume training
+│   └── history_*.json         → Training history
 │
-├── requirements.txt
-├── README.md                  → This file
-├── GPU_OPTIMIZATION_GUIDE.md  ⭐ GPU optimization details
-├── SETUP_SUMMARY.md           → Complete setup guide
-├── TRAINING_OUTPUT_GUIDE.md   → Output files reference
-├── CONFIG_UNIFIED.md          → Config consolidation guide
-└── TRAIN_FIXES.md             → Bug fixes log
+└── requirements.txt
 ```
 
 ---
 
-## 🚀 Installation & Setup
+## ⚙️ Configuration Summary
 
-```bash
-# 1. Clone repository
-git clone https://github.com/adnanul-islam-jisun/Weight_mannagemner.git
-cd Weight_mannagemner
+| Category | Parameter | Value | Description |
+|----------|-----------|-------|-------------|
+| **Model** | IMAGE_MODEL | `vit_b_16` | Vision Transformer Base/16 |
+| | IMAGE_OUTPUT_DIM | 768 | ViT output dimension |
+| | METADATA_OUTPUT_DIM | 256 | Metadata encoder output |
+| | ATTENTION_NUM_HEADS | 8 | Cross-attention heads |
+| | ATTENTION_EMBED_DIM | 256 | Attention embedding dim |
+| **Training** | EPOCHS | 120 | Total training epochs |
+| | BATCH_SIZE | Auto (16-128) | Based on GPU memory |
+| | LEARNING_RATE | 1e-4 | Initial learning rate |
+| | WEIGHT_DECAY | 1e-4 | AdamW regularization |
+| | FREEZE_EPOCHS | 10 | Phase 1 frozen epochs |
+| **Loss** | LOSS_TYPE | `msle` | Mean Squared Log Error |
+| | USE_LOG_TRANSFORM | True | log1p target transform |
+| **Scheduler** | TYPE | `cosine_warm` | Cosine Annealing Warm Restarts |
+| | T_0 | 20 | Initial restart period |
+| | T_MULT | 2 | Period multiplier |
+| **GPU** | USE_AMP | True (CUDA) | Automatic Mixed Precision |
+| | PIN_MEMORY | True (CUDA) | Faster data transfer |
 
-# 2. Create virtual environment
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+---
 
-# 3. Install dependencies
-pip install -r requirements.txt
+## 🚀 GPU Optimizations
 
-# 4. Verify installation
-python -c "import torch; print(f'PyTorch: {torch.__version__}')"
-python -c "import torchvision; print(f'TorchVision: {torchvision.__version__}')"
+| Feature | Description | Speedup |
+|---------|-------------|---------|
+| **AMP (FP16)** | Automatic Mixed Precision training | 2-3× faster |
+| **CuDNN Benchmark** | Auto-tune convolution algorithms | 10-20% faster |
+| **TF32** | Tensor Float 32 on Ampere GPUs | 3× matmul speedup |
+| **Pin Memory** | Faster CPU→GPU data transfer | 2-3× data loading |
+| **Persistent Workers** | Keep DataLoader workers alive | Reduced overhead |
+| **Auto Batch Size** | Adjust based on GPU memory | Optimal memory usage |
+
+---
+
+## 📊 Model Parameters
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           PARAMETER BREAKDOWN                                    │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  Component                          Parameters       Trainable                   │
+│  ─────────────────────────────────────────────────────────────────────────────  │
+│  Image Encoder (ViT-B/16)           86,567,680      Phase 1: ❌  Phase 2: ✅    │
+│    ├── Patch Embedding                  590,592                                  │
+│    ├── Transformer Blocks (12×)      85,054,464                                  │
+│    └── Class Token + Position           151,296                                  │
+│                                                                                  │
+│  Metadata Encoder                       ~50,000      ✅ Always trainable         │
+│    ├── Category Embedding               ~5,120       (num_types × 32)            │
+│    ├── Numerical MLP                   ~20,000       (128→64→32)                 │
+│    └── Fusion Layer                    ~25,000       (64→512→256)                │
+│                                                                                  │
+│  Stacked Mutual Attention (2x)       ~1,600,000      ✅ Always trainable         │
+│    ├── Visual→Metadata Attention       ~400,000      (2 layers)                  │
+│    ├── Metadata→Visual Attention       ~400,000      (2 layers)                  │
+│    ├── Residual Projections            ~520,000      (2 layers)                  │
+│    └── Fusion MLP                      ~280,000      (2 layers)                  │
+│                                                                                  │
+│  Regression Head                        ~25,000      ✅ Always trainable         │
+│    └── 256→128→64→1                                                              │
+│                                                                                  │
+│  ─────────────────────────────────────────────────────────────────────────────  │
+│  TOTAL                              ~88,200,000                                  │
+│  Phase 1 Trainable                  ~1,700,000      (2% of total)                │
+│  Phase 2 Trainable                  ~88,200,000     (100% of total)              │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🎯 Usage
+## 🎯 Expected Performance
 
-### **Training**
+| Metric | Target | Excellent | Notes |
+|--------|--------|-----------|-------|
+| **MAE** | < 150 kg | < 100 kg | Mean Absolute Error |
+| **RMSE** | < 200 kg | < 150 kg | Root Mean Squared Error |
+| **MAPE** | < 20% | < 15% | Mean Absolute Percentage Error |
+| **R²** | > 0.85 | > 0.90 | Coefficient of Determination |
+
+---
+
+## 📖 Usage
+
+### Training
 
 ```bash
-# Run full training pipeline (50 epochs)
+# Start fresh training
+rm -f checkpoints/latest_checkpoint.pt
 python train.py
 
-# Output:
-# - Phase 1: 10 epochs with frozen ViT
-# - Phase 2: 40 epochs fine-tuning
-# - Saves: models, metrics CSV, training history
+# Resume from checkpoint
+python train.py  # Automatically resumes if checkpoint exists
 ```
 
-### **Monitor Training**
+### Monitor Training
 
 ```bash
 # View training progress
@@ -239,20 +540,20 @@ cat checkpoints/training_log_*.csv | column -t -s,
 tail -f checkpoints/training_log_*.csv
 ```
 
-### **Load Best Model**
+### Load Best Model
 
 ```python
 import torch
 from config.training_config import create_optimized_model
 
-# Load best model
+# Load checkpoint
 checkpoint = torch.load('checkpoints/best_model_phase2_TIMESTAMP.pt')
 
 # Create model
 model, preprocessor, loss_fn = create_optimized_model(
-    num_categories=10,
-    num_numerical_features=11,
-    device='mps'  # or 'cuda' or 'cpu'
+    num_categories=15,
+    num_numerical_features=9,  # Selected features after correlation filtering
+    device='cuda'
 )
 
 # Load weights
@@ -264,207 +565,66 @@ print(f"Val MAE: {checkpoint['val_mae']:.2f} kg")
 print(f"Val RMSE: {checkpoint['val_rmse']:.2f} kg")
 ```
 
-### **Make Predictions**
+---
 
-```python
-# See predict.py for inference pipeline
-python predict.py --image path/to/image.jpg --type metal --features V_x,V_y,V_z,D_x,D_y
+## 🔄 Data Flow Summary
+
 ```
-
----
-
-## � GPU Optimizations
-
-This system is **fully optimized for GPU training** with the following enhancements:
-
-### **Automatic Mixed Precision (AMP)**
-- ✅ **2-3x faster training** (tested on RTX 3090/4090, A100)
-- ✅ **50% memory reduction** - train with larger batch sizes
-- ✅ **Minimal accuracy impact** - uses FP16 where safe, FP32 where needed
-- ✅ **Automatic gradient scaling** - prevents underflow
-
-### **Auto Batch Size Adjustment**
-```python
-# Automatically adjusts based on GPU memory
-if gpu_memory >= 24GB: BATCH_SIZE = 64
-elif gpu_memory >= 16GB: BATCH_SIZE = 32
-elif gpu_memory >= 12GB: BATCH_SIZE = 16
-elif gpu_memory >= 8GB: BATCH_SIZE = 8
-else: BATCH_SIZE = 4
-```
-
-### **Optimized Data Loading**
-- ✅ **Pin memory** - Faster CPU→GPU transfer (2-3x speedup)
-- ✅ **Persistent workers** - Avoid DataLoader process respawn
-- ✅ **Prefetch factor** - Pre-load batches while GPU trains
-- ✅ **Multi-process loading** - Parallelize data preprocessing
-
-### **CuDNN Optimizations**
-- ✅ **cudnn.benchmark = True** - Auto-tune kernels for your hardware
-- ✅ **TF32 support** - Faster matrix ops on Ampere GPUs (RTX 30xx+)
-
-### **Performance Monitoring**
-```bash
-# Training output shows GPU memory usage
-Epoch [5/50] | Train: 0.0234 | Val MAE: 45.23kg | GPU Mem: 3.42/4.00GB
-```
-
-### **Detailed Guide**
-See [GPU_OPTIMIZATION_GUIDE.md](GPU_OPTIMIZATION_GUIDE.md) for:
-- Complete optimization details
-- Performance benchmarks
-- Troubleshooting tips
-- Best practices
-
----
-
-## �📊 Model Performance
-
-### **Dataset Statistics**
-- **Samples:** 10,421 records
-- **Weight Range:** 3.5 - 3,450 kg (985× ratio)
-- **Distribution:** Right-skewed, heavy-tailed, NOT normal
-- **Outliers:** ~2% (200 samples)
-
-### **Expected Performance** (After 50 epochs)
-| Metric | Target | Excellent |
-|--------|--------|-----------|
-| **MAE** | < 150 kg | < 100 kg |
-| **RMSE** | < 200 kg | < 150 kg |
-| **MAPE** | < 20% | < 15% |
-| **R²** | > 0.85 | > 0.90 |
-
----
-
-## ⚙️ Configuration
-
-Edit `config/training_config.py`:
-
-```python
-class TrainingConfig:
-    # Model
-    IMAGE_OUTPUT_DIM = 768           # ViT-B/16 output
-    METADATA_OUTPUT_DIM = 256
-    
-    # Data
-    BATCH_SIZE = 8                   # Adjust for GPU memory
-    USE_LOG_TRANSFORM = True         # Essential for wide range
-    
-    # Training
-    EPOCHS = 100
-    LEARNING_RATE = 1e-4
-    LOSS_TYPE = 'msle'               # Recommended
-    
-    # Progressive Training
-    FREEZE_IMAGE_ENCODER_EPOCHS = 10
-    
-    # Device
-    DEVICE = 'mps'  # Auto-detected: mps/cuda/cpu
-```
-
----
-
-## 🔬 Advanced Features
-
-### **Multiple ViT Models Available**
-- `vit_b_16` - Base/16 (86M params) ⭐ Default
-- `vit_b_32` - Base/32 (88M params, faster)
-- `vit_l_16` - Large/16 (304M params, higher capacity)
-- `vit_l_32` - Large/32 (306M params, balanced)
-- `vit_h_14` - Huge/14 (632M params, maximum capacity)
-
-### **10 Loss Functions Available**
-- **MSLE** - Mean Squared Log Error ⭐ Recommended
-- Huber - For outliers
-- MAE - Most robust
-- MSE - Standard
-- Smooth L1, MAPE, Quantile, Combined, Log-Cosh, Weighted MAE
-
-### **Data Augmentation**
-- Random Horizontal Flip (p=0.5)
-- Color Jitter (brightness ±20%, contrast ±20%)
-- Resize to 224×224
-- ImageNet normalization
-
----
-
-## 📈 Visualize Results
-
-```python
-import pandas as pd
-import matplotlib.pyplot as plt
-
-# Load training log
-df = pd.read_csv('checkpoints/training_log_TIMESTAMP.csv')
-
-# Plot training curves
-plt.figure(figsize=(12, 4))
-
-plt.subplot(1, 2, 1)
-plt.plot(df['epoch'], df['train_loss'], label='Train')
-plt.plot(df['epoch'], df['val_loss'], label='Validation')
-plt.axvline(x=10, color='red', linestyle='--', label='Phase 2 Start')
-plt.xlabel('Epoch')
-plt.ylabel('Loss (MSLE)')
-plt.legend()
-plt.title('Training Progress')
-
-plt.subplot(1, 2, 2)
-plt.plot(df['epoch'], df['val_mae_kg'], label='MAE')
-plt.plot(df['epoch'], df['val_rmse_kg'], label='RMSE')
-plt.xlabel('Epoch')
-plt.ylabel('Error (kg)')
-plt.legend()
-plt.title('Validation Errors')
-
-plt.tight_layout()
-plt.savefig('training_curves.png')
+Input Image (224×224×3) + Metadata (Type + 9 selected features)
+                    │
+                    ▼
+    ┌───────────────────────────────┐
+    │  1. Feature Extraction        │
+    │     ViT: 86M params → 768-dim │
+    │     MLP: 50K params → 256-dim │
+    └───────────────┬───────────────┘
+                    │
+                    ▼
+    ┌───────────────────────────────┐
+    │  2. Mutual Attention Fusion   │
+    │     8-head cross-attention    │
+    │     Bidirectional interaction │
+    │     → 256-dim fused features  │
+    └───────────────┬───────────────┘
+                    │
+                    ▼
+    ┌───────────────────────────────┐
+    │  3. Regression Head           │
+    │     256 → 128 → 64 → 1        │
+    │     → log(weight) prediction  │
+    └───────────────┬───────────────┘
+                    │
+                    ▼
+    ┌───────────────────────────────┐
+    │  4. Inverse Transform         │
+    │     expm1(pred) = weight (kg) │
+    └───────────────────────────────┘
 ```
 
 ---
 
 ## 🐛 Troubleshooting
 
-### **Out of Memory**
+### Out of Memory
 ```python
-# Reduce batch size in config/training_config.py
-BATCH_SIZE = 4  # or even 2
+# Reduce batch size in config/config.py
+BATCH_SIZE = 16  # or even 8
 ```
 
-### **Slow Training**
+### Slow Training
 ```python
-# Use smaller ViT model
-from models.image_encoder import create_fast_image_encoder  # ViT-B/32
+# Use ViT-B/32 (faster, larger patches)
+IMAGE_MODEL = 'vit_b_32'
 
 # Reduce workers
 NUM_WORKERS = 2
 ```
 
-### **Poor Performance**
-- Increase epochs (try 100)
-- Check data quality
-- Verify LOG transformation is enabled
-- Use MSLE loss for wide weight ranges
-
----
-
-## 📚 Documentation
-
-- **`SETUP_SUMMARY.md`** - Complete setup guide for your dataset
-- **`TRAINING_OUTPUT_GUIDE.md`** - Output files reference
-- **`TRAIN_FIXES.md`** - Bug fixes and solutions
-- **`models/ENCODERS_README.md`** - Model architecture details
-- **`models/LOSS_FUNCTIONS_GUIDE.md`** - Loss function selection
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+### Poor Performance
+1. Increase epochs (try 100+)
+2. Check that `USE_LOG_TRANSFORM = True`
+3. Verify `LOSS_TYPE = 'msle'`
+4. Ensure data has valid weights (> 50 kg)
 
 ---
 
@@ -485,21 +645,7 @@ This project is licensed under the MIT License.
 ## 📞 Contact
 
 **Project Maintainer:** Adnanul Islam Jisun  
-**Repository:** [Weight_mannagemner](https://github.com/adnanul-islam-jisun/Weight_mannagemner)
-
----
-
-## ⭐ Key Features
-
-✅ State-of-the-art Vision Transformer (ViT-B/16)  
-✅ Multimodal fusion (images + metadata)  
-✅ Progressive training (freeze → fine-tune)  
-✅ LOG transformation for wide weight ranges  
-✅ MSLE loss optimized for your data  
-✅ CSV tracking for every epoch  
-✅ Automatic best model selection  
-✅ 10 loss function options  
-✅ Production-ready inference pipeline  
+**Repository:** [Weight_management](https://github.com/adnanul-islam-jisun/Weight_management)
 
 ---
 

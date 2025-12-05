@@ -158,30 +158,28 @@ def create_optimized_model(
     preprocessor = WeightPreprocessor(use_log_transform=USE_LOG_TRANSFORM)
     print(f"   Transform: {'LOG (log1p/expm1)' if USE_LOG_TRANSFORM else 'None'}")
     
-    # 5. Loss Function - HUBER LOSS (Fixed: MSLE was causing overfitting)
+    # 5. Loss Function - Use LOSS_TYPE from config.py
     print("\n5. Loss Function")
-    from models.loss_functions import create_huber_loss
+    from models.loss_functions import WeightPredictionLoss
     
-    # Calculate appropriate delta for Huber loss
-    if USE_LOG_TRANSFORM:
-        # For log-space (values ~1.2 to 8.1), a delta of 1.0 is standard/robust
-        huber_delta = 1.0
-    else:
-        # For raw weight range (3.5 - 3450), use 5% of range
-        weight_range = 3450.0 - 3.5
-        huber_delta = weight_range * 0.05  # ~172.3
+    # Use the configured loss type instead of hardcoding
+    loss_fn = WeightPredictionLoss(loss_type=LOSS_TYPE)
     
-    loss_fn = create_huber_loss(delta=huber_delta)
+    # Print loss function info
+    loss_info = {
+        'mse': ('MSE (Mean Squared Error)', 'L = mean((pred - target)²)'),
+        'mae': ('MAE (Mean Absolute Error)', 'L = mean(|pred - target|)'),
+        'huber': ('Huber Loss', 'L = MSE if |e|<δ else MAE'),
+        'msle': ('MSLE (Mean Squared Log Error)', 'L = mean((log(1+pred) - log(1+target))²)'),
+        'smooth_l1': ('Smooth L1 Loss', 'L = 0.5x² if |x|<1 else |x|-0.5'),
+    }
+    loss_name, loss_formula = loss_info.get(LOSS_TYPE, (LOSS_TYPE.upper(), 'Custom'))
     
     print(f"{'='*70}")
-    print(f"LOSS FUNCTION: Huber Loss")
+    print(f"LOSS FUNCTION: {loss_name}")
     print(f"{'='*70}")
-    print(f"Delta:               {huber_delta:.1f}")
-    print(f"Reason:              MSLE caused log-log overfitting")
-    print(f"                     Huber optimizes real-space errors")
-    print(f"Best for:            Data with outliers + LOG transform")
-    print(f"Outlier robustness:  High")
-    print(f"Expected MAE:        450-550kg (much better than MSLE)")
+    print(f"Formula:             {loss_formula}")
+    print(f"Log Transform:       {'Yes (targets are log1p transformed)' if USE_LOG_TRANSFORM else 'No'}")
     print(f"{'='*70}")
     
     total_params = sum(p.numel() for p in model.parameters())

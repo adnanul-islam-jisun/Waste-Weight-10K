@@ -80,13 +80,17 @@ class MultimodalWeightPredictor(nn.Module):
         
         # ===== REGRESSION HEAD =====
         # Final layers for weight prediction
+        # NOTE: For direct weight prediction (no log transform), we use ReLU at the end
+        #       to ensure positive outputs. ReLU allows large values (50-3450 kg range)
+        #       while Softplus would compress the output range.
         self.regression_head = nn.Sequential(
             nn.Linear(fusion_output_dim, 64),
             nn.ReLU(),
             nn.Dropout(dropout * 0.5),
             nn.Linear(64, 32),
             nn.ReLU(),
-            nn.Linear(32, 1)  # Single output: predicted weight
+            nn.Linear(32, 1),  # Single output: predicted weight in kg
+            nn.ReLU()  # Ensures positive output, allows full kg range
         )
         
         print(f"MultimodalWeightPredictor initialized:")
@@ -94,6 +98,7 @@ class MultimodalWeightPredictor(nn.Module):
         print(f"  - Metadata features: {metadata_feature_dim}-dim")
         print(f"  - Fusion dimensions: {fusion_hidden_dims}")
         print(f"  - Residual connections: {use_residual}")
+        print(f"  - Output activation: Softplus (positive constraint)")
     
     def forward(
         self, 

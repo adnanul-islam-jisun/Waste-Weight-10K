@@ -70,19 +70,19 @@ class MetadataEncoder(nn.Module):
         nn.init.xavier_uniform_(self.category_embedding.weight)
         
         # ===== NUMERICAL SUB-ENCODER =====
-        # MLP for processing normalized numerical features
+        # Deeper MLP for processing normalized numerical features
         if numerical_hidden_dims is None:
-            numerical_hidden_dims = [64, 32]
+            numerical_hidden_dims = [128, 64, 32]  # Deeper network for numerical features
         
         numerical_layers = []
         in_dim = num_numerical_features
         
-        for hidden_dim in numerical_hidden_dims:
+        for i, hidden_dim in enumerate(numerical_hidden_dims):
             numerical_layers.extend([
                 nn.Linear(in_dim, hidden_dim),
-                nn.ReLU(),
+                nn.GELU(),  # GELU often works better for numeric data
                 nn.BatchNorm1d(hidden_dim),
-                nn.Dropout(dropout)
+                nn.Dropout(dropout * (0.5 + 0.5 * i / len(numerical_hidden_dims)))  # Increasing dropout
             ])
             in_dim = hidden_dim
         
@@ -128,7 +128,8 @@ class MetadataEncoder(nn.Module):
     def forward(
         self, 
         category_indices: torch.Tensor, 
-        numerical_features: torch.Tensor
+        numerical_features: torch.Tensor,
+        already_normalized: bool = True
     ) -> torch.Tensor:
         """
         Forward pass through the metadata encoder.
@@ -138,6 +139,9 @@ class MetadataEncoder(nn.Module):
                                             Shape: (batch_size,) or (batch_size, 1)
             numerical_features (torch.Tensor): Numerical metadata features
                                               Shape: (batch_size, num_numerical_features)
+            already_normalized (bool): Whether features are already normalized.
+                                       Set to True during training (DataLoader normalizes),
+                                       Set to False during inference with raw data.
         
         Returns:
             torch.Tensor: Unified metadata feature vector M_features 
@@ -153,12 +157,17 @@ class MetadataEncoder(nn.Module):
         category_embed = self.category_embedding(category_indices.long())
         
         # ===== NUMERICAL BRANCH =====
-        # Normalize numerical features
-        numerical_normalized = self.normalize_numerical_features(numerical_features)
+        # Only normalize if data is not already normalized (e.g., during inference)
+        if already_normalized:
+            # Data from DataLoader is already normalized in preprocessing
+            numerical_processed = numerical_features
+        else:
+            # Raw data during inference - apply normalization
+            numerical_processed = self.normalize_numerical_features(numerical_features)
         
         # Pass through MLP
         # Output: (batch_size, numerical_output_dim)
-        numerical_embed = self.numerical_mlp(numerical_normalized)
+        numerical_embed = self.numerical_mlp(numerical_processed)
         
         # ===== CONCATENATION =====
         # Combine categorical and numerical embeddings

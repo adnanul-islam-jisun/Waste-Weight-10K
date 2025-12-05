@@ -270,16 +270,19 @@ class MutualAttentionBlock(nn.Module):
 
 class MultimodalWeightPredictor_WithAttention(nn.Module):
     """
-    Multimodal Weight Predictor using Mutual Attention Block.
+    Multimodal Weight Predictor using Stacked Mutual Attention Blocks.
     
-    This is an enhanced version that uses cross-attention for fusion
-    instead of simple concatenation.
+    Enhanced version with:
+    - Multiple stacked attention layers for hierarchical feature learning
+    - Deeper regression head with skip connections
+    - Improved regularization
     
     Args:
         image_encoder: Pre-configured image encoder
         metadata_encoder: Pre-configured metadata encoder
         embed_dim: Embedding dimension for attention
         num_heads: Number of attention heads
+        num_attention_layers: Number of stacked attention blocks
         dropout: Dropout rate
         use_residual: Whether to use residual connections
     """
@@ -290,6 +293,7 @@ class MultimodalWeightPredictor_WithAttention(nn.Module):
         metadata_encoder,
         embed_dim: int = 256,
         num_heads: int = 8,
+        num_attention_layers: int = 2,  # NEW: Stacked attention layers
         dropout: float = 0.2,
         use_residual: bool = True
     ):
@@ -302,7 +306,7 @@ class MultimodalWeightPredictor_WithAttention(nn.Module):
         visual_dim = image_encoder.get_output_dim()
         metadata_dim = metadata_encoder.get_output_dim()
         
-        # Mutual attention block for fusion
+        # First attention block (handles dimension mismatch)
         self.attention_fusion = MutualAttentionBlock(
             visual_dim=visual_dim,
             metadata_dim=metadata_dim,
@@ -312,19 +316,41 @@ class MultimodalWeightPredictor_WithAttention(nn.Module):
             use_residual=use_residual
         )
         
-        # Regression head
+        # Additional stacked attention blocks (same dimension)
+        self.stacked_attention = nn.ModuleList([
+            MutualAttentionBlock(
+                visual_dim=embed_dim,  # After first block, dimensions match
+                metadata_dim=embed_dim,
+                embed_dim=embed_dim,
+                num_heads=num_heads,
+                dropout=dropout,
+                use_residual=use_residual
+            )
+            for _ in range(num_attention_layers - 1)
+        ])
+        
+        # Deeper regression head with skip connection
         self.regression_head = nn.Sequential(
-            nn.Linear(embed_dim, 128),
-            nn.ReLU(),
+            nn.Linear(embed_dim, 256),
+            nn.GELU(),  # GELU often works better than ReLU for transformers
+            nn.LayerNorm(256),
             nn.Dropout(dropout * 0.5),
-            nn.Linear(128, 64),
-            nn.ReLU(),
+            nn.Linear(256, 128),
+            nn.GELU(),
+            nn.LayerNorm(128),
             nn.Dropout(dropout * 0.3),
-            nn.Linear(64, 1)
+            nn.Linear(128, 64),
+            nn.GELU(),
+            nn.Dropout(dropout * 0.2),
+            nn.Linear(64, 1),
+            nn.Softplus()  # Softplus: smooth positive output, better gradients than ReLU
         )
         
+        print(f"  - Attention layers: {num_attention_layers} (stacked)")
+        
         print(f"\nMultimodalWeightPredictor_WithAttention initialized:")
-        print(f"  - Using Mutual Attention Fusion")
+        print(f"  - Using Stacked Mutual Attention Fusion ({num_attention_layers} layers)")
+        print(f"  - Output activation: Softplus (smooth positive constraint)")
         print(f"  - Output dim: 1 (weight prediction)")
     
     def forward(
@@ -335,7 +361,7 @@ class MultimodalWeightPredictor_WithAttention(nn.Module):
         return_attention: bool = False
     ):
         """
-        Forward pass with attention-based fusion.
+        Forward pass with stacked attention-based fusion.
         
         Args:
             images: Batch of images (batch_size, 3, 224, 224)
@@ -353,21 +379,36 @@ class MultimodalWeightPredictor_WithAttention(nn.Module):
             category_indices, numerical_features
         )
         
-        # Fuse with mutual attention
+        # First attention block (handles initial dimension projection)
         if return_attention:
             fused_features, attention_weights = self.attention_fusion(
                 visual_features, metadata_features, return_attention=True
             )
+            all_attention = [attention_weights]
         else:
             fused_features = self.attention_fusion(
                 visual_features, metadata_features, return_attention=False
             )
         
+        # Apply stacked attention blocks (symmetric attention)
+        for i, attn_block in enumerate(self.stacked_attention):
+            # Use fused features as both visual and metadata input
+            # This creates a self-refinement mechanism
+            if return_attention:
+                fused_features, attn_weights = attn_block(
+                    fused_features, fused_features, return_attention=True
+                )
+                all_attention.append(attn_weights)
+            else:
+                fused_features = attn_block(
+                    fused_features, fused_features, return_attention=False
+                )
+        
         # Predict weight
         weight_prediction = self.regression_head(fused_features)
         
         if return_attention:
-            return weight_prediction, attention_weights
+            return weight_prediction, {'all_layers': all_attention}
         
         return weight_prediction
     

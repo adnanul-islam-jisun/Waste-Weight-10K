@@ -49,6 +49,68 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
     # GradScaler for Automatic Mixed Precision (GPU speedup)
     scaler = torch.amp.GradScaler('cuda') if USE_AMP else None
     
+    # Learning Rate Scheduler - support multiple types
+    scheduler = None
+    if USE_LR_SCHEDULER:
+        scheduler_type = getattr(globals().get('config', type('', (), {})()), 'LR_SCHEDULER_TYPE', 'plateau')
+        try:
+            from config.config import LR_SCHEDULER_TYPE, COSINE_T_0, COSINE_T_MULT
+            scheduler_type = LR_SCHEDULER_TYPE
+        except ImportError:
+            scheduler_type = 'plateau'
+            COSINE_T_0 = 20
+            COSINE_T_MULT = 2
+        
+        if scheduler_type == 'cosine_warm':
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+                trainer.optimizer,
+                T_0=COSINE_T_0,
+                T_mult=COSINE_T_MULT,
+                eta_min=LR_SCHEDULER_MIN_LR
+            )
+            print(f"✓ Learning Rate Scheduler enabled:")
+            print(f"   - Type: CosineAnnealingWarmRestarts")
+            print(f"   - T_0: {COSINE_T_0} epochs (first restart)")
+            print(f"   - T_mult: {COSINE_T_MULT} (period multiplier)")
+            print(f"   - Min LR: {LR_SCHEDULER_MIN_LR}")
+        elif scheduler_type == 'cosine':
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                trainer.optimizer,
+                T_max=num_epochs,
+                eta_min=LR_SCHEDULER_MIN_LR
+            )
+            print(f"✓ Learning Rate Scheduler enabled:")
+            print(f"   - Type: CosineAnnealingLR")
+            print(f"   - T_max: {num_epochs} epochs")
+            print(f"   - Min LR: {LR_SCHEDULER_MIN_LR}")
+        else:  # 'plateau' (default)
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                trainer.optimizer,
+                mode='min',
+                factor=LR_SCHEDULER_FACTOR,
+                patience=LR_SCHEDULER_PATIENCE,
+                min_lr=LR_SCHEDULER_MIN_LR
+            )
+            print(f"✓ Learning Rate Scheduler enabled:")
+            print(f"   - Type: ReduceLROnPlateau")
+            print(f"   - Factor: {LR_SCHEDULER_FACTOR} (multiply LR by this when plateau)")
+            print(f"   - Patience: {LR_SCHEDULER_PATIENCE} epochs")
+            print(f"   - Min LR: {LR_SCHEDULER_MIN_LR}")
+    
+    # Exponential Moving Average (EMA) for stable predictions
+    ema_model = None
+    try:
+        from config.config import USE_EMA, EMA_DECAY
+        if USE_EMA:
+            from copy import deepcopy
+            ema_model = deepcopy(model)
+            ema_model.eval()
+            for param in ema_model.parameters():
+                param.requires_grad = False
+            print(f"✓ EMA enabled with decay: {EMA_DECAY}")
+    except ImportError:
+        pass
+    
     # Create save directory
     os.makedirs(save_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -69,7 +131,7 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
     latest_checkpoint_path = os.path.join(save_dir, 'latest_checkpoint.pt')
     if resume and os.path.exists(latest_checkpoint_path):
         print(f"\n🔄 Found checkpoint at {latest_checkpoint_path}. Resuming...")
-        checkpoint = torch.load(latest_checkpoint_path, map_location=device)
+        checkpoint = torch.load(latest_checkpoint_path, map_location=device, weights_only=False)
         
         # Load model state
         model.load_state_dict(checkpoint['model_state_dict'])
@@ -80,6 +142,11 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
         # Load scaler state if exists
         if scaler and 'scaler_state_dict' in checkpoint:
             scaler.load_state_dict(checkpoint['scaler_state_dict'])
+        
+        # Load scheduler state if exists
+        if scheduler and 'scheduler_state_dict' in checkpoint and checkpoint['scheduler_state_dict'] is not None:
+            scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+            print(f"   ✓ Scheduler state restored")
             
         # Load history and epoch
         if 'history' in checkpoint:
@@ -128,7 +195,9 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
                     # Validation with AMP support
                     loss, preds, targets = trainer.validate_step(batch, use_amp=USE_AMP)
                     total_loss += loss
-                    all_preds.extend(preds.cpu().numpy())
+                    # FIX: Squeeze predictions from (batch_size, 1) to (batch_size,) to match targets shape
+                    # This prevents numpy broadcasting bug: (N,1) - (N,) → (N,N) instead of (N,)
+                    all_preds.extend(preds.squeeze().cpu().numpy())
                     all_targets.extend(targets.cpu().numpy())
         
         avg_loss = total_loss / len(loader)
@@ -160,6 +229,17 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
             break
             
         train_loss = run_epoch(train_loader, is_training=True)
+        
+        # Update EMA model after each epoch
+        if ema_model is not None:
+            try:
+                from config.config import EMA_DECAY
+            except ImportError:
+                EMA_DECAY = 0.999
+            with torch.no_grad():
+                for ema_param, model_param in zip(ema_model.parameters(), model.parameters()):
+                    ema_param.data.mul_(EMA_DECAY).add_(model_param.data, alpha=1 - EMA_DECAY)
+        
         val_loss, val_mae, val_rmse = run_epoch(val_loader, is_training=False)
         
         history['train_loss'].append(train_loss)
@@ -217,11 +297,20 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': trainer.optimizer.state_dict(),
             'scaler_state_dict': scaler.state_dict() if scaler else None,
+            'scheduler_state_dict': scheduler.state_dict() if scheduler else None,
             'history': history,
             'train_loss': train_loss,
             'val_loss': val_loss,
         }, os.path.join(save_dir, 'latest_checkpoint.pt'))
         print(f"   💾 Checkpoint saved: {save_dir}/latest_checkpoint.pt")
+        
+        # Step the learning rate scheduler based on validation loss
+        if scheduler is not None:
+            old_lr = trainer.optimizer.param_groups[0]['lr']
+            scheduler.step(val_loss)
+            new_lr = trainer.optimizer.param_groups[0]['lr']
+            if new_lr != old_lr:
+                print(f"   📉 Learning rate reduced: {old_lr:.2e} → {new_lr:.2e}")
     
     # PHASE 2: Fine-tune entire model (remaining epochs)
     # If we resumed from > 10 epochs, we need to adjust the range
@@ -234,15 +323,32 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
         print("-"*80)
         trainer.unfreeze_all()
         
-        # Reduce learning rate for fine-tuning
-        
-        for param_group in trainer.optimizer.param_groups:
-            param_group['lr'] = param_group['lr'] * 0.1
-        print(f"✓ Reduced learning rate by 10x for fine-tuning")
+        # Reduce learning rate for fine-tuning with different scales for different components
+        # Image encoder needs smaller LR (pretrained), other layers can use higher LR
+        print(f"✓ Adjusting learning rates for fine-tuning:")
+        for i, param_group in enumerate(trainer.optimizer.param_groups):
+            old_lr = param_group['lr']
+            if i == 0:  # Image encoder (first group)
+                # Image encoder: reduce by 5x (not 10x) to allow some adaptation
+                param_group['lr'] = old_lr * 0.2  # 1e-4 * 0.1 * 0.2 = 2e-6
+                print(f"   - Image encoder: {old_lr:.2e} → {param_group['lr']:.2e} (×0.2)")
+            else:
+                # Other layers: reduce by 2x to maintain learning capacity
+                param_group['lr'] = old_lr * 0.5
+                print(f"   - Layer group {i}: {old_lr:.2e} → {param_group['lr']:.2e} (×0.5)")
         
         for epoch in range(remaining_epochs):
             # Calculate actual epoch number
             total_epoch = current_epoch + epoch + 1
+            
+            # Run training and validation for this epoch
+            train_loss = run_epoch(train_loader, is_training=True)
+            val_loss, val_mae, val_rmse = run_epoch(val_loader, is_training=False)
+            
+            history['train_loss'].append(train_loss)
+            history['val_loss'].append(val_loss)
+            history['val_mae'].append(val_mae)
+            history['val_rmse'].append(val_rmse)
             
             # Record for CSV
             epoch_records.append({
@@ -294,11 +400,20 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': trainer.optimizer.state_dict(),
                 'scaler_state_dict': scaler.state_dict() if scaler else None,
+                'scheduler_state_dict': scheduler.state_dict() if scheduler else None,
                 'history': history,
                 'train_loss': train_loss,
                 'val_loss': val_loss,
             }, os.path.join(save_dir, 'latest_checkpoint.pt'))
             print(f"   💾 Checkpoint saved: {save_dir}/latest_checkpoint.pt")
+            
+            # Step the learning rate scheduler based on validation loss
+            if scheduler is not None:
+                old_lr = trainer.optimizer.param_groups[0]['lr']
+                scheduler.step(val_loss)
+                new_lr = trainer.optimizer.param_groups[0]['lr']
+                if new_lr != old_lr:
+                    print(f"   📉 Learning rate reduced: {old_lr:.2e} → {new_lr:.2e}")
     
     # Save final model
     torch.save({
@@ -307,9 +422,18 @@ def train_model(model, train_loader, val_loader, weight_preprocessor, loss_fn,
         'history': history,
     }, os.path.join(save_dir, f'final_model_{timestamp}.pt'))
     
-    # Save training history as JSON
+    # Save training history as JSON (convert numpy types to Python native types)
+    history_serializable = {}
+    for key, value in history.items():
+        if isinstance(value, list):
+            history_serializable[key] = [float(v) if hasattr(v, 'item') else v for v in value]
+        elif hasattr(value, 'item'):
+            history_serializable[key] = float(value)
+        else:
+            history_serializable[key] = value
+    
     with open(os.path.join(save_dir, f'history_{timestamp}.json'), 'w') as f:
-        json.dump(history, f, indent=2)
+        json.dump(history_serializable, f, indent=2)
     
     # Final CSV save (already saved every epoch, this is redundant but ensures final state)
     metrics_df = pd.DataFrame(epoch_records)
@@ -426,6 +550,13 @@ if __name__ == "__main__":
     df.dropna(subset=['weight_in_kg'], inplace=True)
     df.fillna(0.0, inplace=True)
     print(f"✓ Data cleaned: {len(df)} valid records")
+    
+    # Filter out samples with weight < 50 kg (minimum weight threshold)
+    MIN_WEIGHT_KG = 50
+    original_count = len(df)
+    df = df[df['weight_in_kg'] >= MIN_WEIGHT_KG]
+    removed_count = original_count - len(df)
+    print(f"✓ Filtered weights < {MIN_WEIGHT_KG}kg: removed {removed_count} samples, {len(df)} remaining")
 
     # Feature engineering
     df_featured = engineer_features(df)

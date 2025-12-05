@@ -15,7 +15,7 @@ class WeightPredictionLoss:
     Comprehensive loss function handler for weight prediction tasks.
     
     Optimized for:
-    - Wide weight ranges (20kg - 1500kg)
+    - Wide weight ranges (50kg - 3450kg)
     - Data with outliers
     - Non-well-behaved distributions
     
@@ -28,6 +28,7 @@ class WeightPredictionLoss:
     6. MAPE (Mean Absolute Percentage Error) - Percentage-based
     7. Quantile Loss - Uncertainty estimation
     8. Combined (MSE + MAE) - Hybrid approach
+    9. Adaptive - Combines MSLE + MAE (recommended for weight prediction)
     """
     
     def __init__(
@@ -37,7 +38,9 @@ class WeightPredictionLoss:
         quantile_alpha: float = 0.5,
         combined_mse_weight: float = 0.7,
         combined_mae_weight: float = 0.3,
-        epsilon: float = 1e-8
+        epsilon: float = 1e-8,
+        adaptive_msle_weight: float = 0.7,
+        adaptive_mae_weight: float = 0.3
     ):
         """
         Initialize loss function handler.
@@ -56,6 +59,8 @@ class WeightPredictionLoss:
         self.combined_mse_weight = combined_mse_weight
         self.combined_mae_weight = combined_mae_weight
         self.epsilon = epsilon
+        self.adaptive_msle_weight = adaptive_msle_weight
+        self.adaptive_mae_weight = adaptive_mae_weight
         
         # Get the loss function
         self.criterion = self._get_loss_function()
@@ -86,8 +91,10 @@ class WeightPredictionLoss:
             return self._log_cosh_loss
         elif self.loss_type == 'weighted_mae':
             return self._weighted_mae_loss
+        elif self.loss_type == 'adaptive':
+            return self._adaptive_loss
         else:
-            available = ['msle', 'huber', 'mae', 'mse', 'smooth_l1', 'mape', 'quantile', 'combined', 'log_cosh', 'weighted_mae']
+            available = ['msle', 'huber', 'mae', 'mse', 'smooth_l1', 'mape', 'quantile', 'combined', 'log_cosh', 'weighted_mae', 'adaptive']
             raise ValueError(
                 f"Unknown loss type: '{self.loss_type}'. "
                 f"Available: {', '.join(available)}"
@@ -249,6 +256,32 @@ class WeightPredictionLoss:
         weights = weights / weights.mean()  # Normalize
         
         return torch.mean(weights * torch.abs(predictions - targets))
+    
+    def _adaptive_loss(self, predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """
+        Adaptive Loss combining MSLE + MAE.
+        
+        MSLE handles the scale-invariance for wide weight ranges,
+        while MAE provides robustness to outliers and direct error minimization.
+        
+        Best for weight prediction with wide ranges (50-3450kg).
+        """
+        # MSLE component (scale-invariant)
+        predictions_clamped = torch.clamp(predictions, min=0.0)
+        targets_clamped = torch.clamp(targets, min=0.0)
+        log_pred = torch.log1p(predictions_clamped)
+        log_target = torch.log1p(targets_clamped)
+        msle = torch.mean((log_pred - log_target) ** 2)
+        
+        # MAE component (direct error)
+        mae = torch.mean(torch.abs(predictions - targets))
+        
+        # Normalize MAE to be on similar scale as MSLE
+        # For log-transformed values, MAE is typically much larger
+        # We normalize by expected log range
+        mae_normalized = mae / (torch.log1p(targets.mean()) + self.epsilon)
+        
+        return self.adaptive_msle_weight * msle + self.adaptive_mae_weight * mae_normalized
     
     def __call__(self, predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """Compute loss."""

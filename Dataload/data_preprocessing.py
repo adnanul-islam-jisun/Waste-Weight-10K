@@ -91,18 +91,78 @@ def prepare_data(df, base_image_path, test_size=0.2, val_size=0.1, random_state=
     print("PREPARING DATA")
     print("="*80)
     
+    # ========================================================================
+    # CLEAN PRODUCT TYPES (fix typos, trailing spaces, inconsistencies)
+    # ========================================================================
+    print("\n🧹 Cleaning Product Types...")
+    
+    # First, strip whitespace from all Type values
+    df = df.copy()  # Avoid modifying original
+    df['Type'] = df['Type'].str.strip().str.lower()  # Strip + lowercase for consistency
+    
+    # Fix known typos and inconsistencies
+    type_corrections = {
+        'grash': 'grass',           # Typo fix
+        'bonet': 'bonnet',          # Typo fix
+        'card board': 'cardboard',  # Merge into single word
+        'cylinder track': 'cylinder_track',  # Use underscore for consistency
+        'car door': 'car_door',     # Use underscore for consistency
+    }
+    
+    df['Type'] = df['Type'].replace(type_corrections)
+    
+    # Show what was cleaned
+    original_types_count = 17  # You mentioned 17 unique types
+    cleaned_types = sorted(df['Type'].unique().tolist())
+    print(f"  ✓ Cleaned {original_types_count} → {len(cleaned_types)} unique types")
+    print(f"  ✓ Applied corrections: {list(type_corrections.keys())}")
+    
     # Create product type mapping
-    product_types = sorted(df['Type'].unique().tolist())
+    product_types = cleaned_types
     product_type_to_idx = {ptype: idx for idx, ptype in enumerate(product_types)}
     print(f"✓ Found {len(product_types)} unique product types: {product_types}")
     
     # Define numerical features (from feature engineering)
+    # Using physics-informed features for weight prediction
+    # OPTIMIZED: Removed highly correlated features to reduce multicollinearity
     numerical_features = [
-        'V_x', 'V_y', 'V_z', 'D_x', 'D_y',
-        'volume_proxy', 'apparent_Vx', 'apparent_Vy', 'apparent_Vz',
-        'solid_angle_proxy', 'view_angle_rad'
+        # Size features (3) - Kept best representatives, removed redundant
+        'log_volume',           # Log of volume - primary weight determinant (r=0.66)
+        'log_max_dimension',    # Log of max dimension (r=0.59)
+        # REMOVED: log_surface_area (r=0.99 with log_volume)
+        # REMOVED: log_geo_mean_dim (r=1.0 with log_volume)
+        # REMOVED: max_dimension (r=0.97 with log_max_dimension)
+        
+        # Shape features (5) - Best uncorrelated features
+        'aspect_ratio_xy',      # Shape: width/height ratio (r=-0.09)
+        # REMOVED: aspect_ratio_xz (r=1.0 with aspect_ratio_yz)
+        'aspect_ratio_yz',      # Shape: height/depth ratio
+        'compactness',          # How cube-like (r=-0.29)
+        'elongation',           # How stretched the object is (r=0.12)
+        'log_vol_surface_ratio', # Volume to surface ratio (r=0.64)
+        # REMOVED: flatness (low correlation r=-0.06)
+        # REMOVED: sphericity (r=0.86 with compactness)
+        
+        # Perspective features (2) - Best uncorrelated
+        'log_distance',         # Log of camera distance (r=0.36)
+        # 'log_apparent_volume',  # Distance-adjusted size (r=0.53)
+        # REMOVED: view_angle_rad (r=-0.99 with depth_ratio)
+        # REMOVED: depth_ratio (redundant with view_angle)
+        
+        # Interaction features (1) - Best one
+        'surface_sphericity',   # Surface × sphericity interaction (r=0.42)
+        # REMOVED: volume_compactness (r=0.97 with compactness)
+        # REMOVED: size_distance_interaction (r=0.97 with log_apparent_volume)
     ]
-    print(f"✓ Using {len(numerical_features)} numerical features")
+    
+    # Filter to only include features that exist in the dataframe
+    available_features = [f for f in numerical_features if f in df.columns]
+    if len(available_features) < len(numerical_features):
+        missing = set(numerical_features) - set(available_features)
+        print(f"⚠️ Warning: Missing features: {missing}")
+    numerical_features = available_features
+    
+    print(f"✓ Using {len(numerical_features)} numerical features (engineered only)")
     
     # Split data: train / (val + test)
     train_df, temp_df = train_test_split(

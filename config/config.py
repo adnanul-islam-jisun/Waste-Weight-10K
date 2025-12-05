@@ -17,7 +17,7 @@ import os
 # ============================================================================
 
 # Use Environment Variable 'DATA_PATH' if set (for Docker), else use default local path
-DEFAULT_LOCAL_PATH = "/Volumes/TRANSCEND/Dataset/waste_dataset"
+DEFAULT_LOCAL_PATH = "/home/asiful/adnan_workspace/Dataset/disaster_data/waste_dataset"
 DATA_PATH = os.getenv("DATA_PATH", DEFAULT_LOCAL_PATH)
 
 BASE_IMAGE_PATH = DATA_PATH
@@ -83,8 +83,11 @@ ATTENTION_NUM_HEADS = 8      # Number of attention heads (must divide ATTENTION_
 # DATA PREPROCESSING
 # ============================================================================
 
-# Weight transformation (CRITICAL for wide range: 3.5-3450kg)
-USE_LOG_TRANSFORM = True  # log1p/expm1 transformation
+# Weight transformation
+# LOG TRANSFORM: Optimal for wide weight ranges (50-3450kg)
+# Transforms exponential distribution to more normal distribution
+# Model predicts log1p(weight), then expm1() converts back to kg
+USE_LOG_TRANSFORM = True  # Log transform for better optimization
 
 # Data splits - ADJUSTED for 10k dataset
 TRAIN_SPLIT = 0.7   # 7,000 images
@@ -106,26 +109,28 @@ AUGMENTATION = {
 # ============================================================================
 
 # Basic training settings
-EPOCHS = 100
+EPOCHS = 120
 
 # Batch size - OPTIMIZED for 10k dataset
 # Balance: Large enough for stable gradients, small enough for regularization
+# NOTE: Batch size 256 is TOO LARGE for ~7k samples (only ~27 batches per epoch)
+#       Smaller batch sizes provide more gradient updates and regularization
 if DEVICE == "cuda":
     gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
     if gpu_memory_gb >= 24:  # A100, RTX 3090/4090
-        BATCH_SIZE = 48  # Good balance for 7k training images
+        BATCH_SIZE = 128  # CHANGED from 256: More gradient updates per epoch (~109 batches)
     elif gpu_memory_gb >= 16:  # V100, RTX 3080
-        BATCH_SIZE = 32  # ~220 batches per epoch
+        BATCH_SIZE = 48  # ~145 batches per epoch
     elif gpu_memory_gb >= 12:  # RTX 3060 Ti
-        BATCH_SIZE = 24  # ~290 batches per epoch
+        BATCH_SIZE = 32  # ~218 batches per epoch
     elif gpu_memory_gb >= 8:  # RTX 3060
-        BATCH_SIZE = 16  # ~440 batches per epoch
+        BATCH_SIZE = 24  # ~291 batches per epoch
     else:  # Lower-end GPUs
-        BATCH_SIZE = 12
+        BATCH_SIZE = 16
     print(f"✓ Auto-adjusted batch size: {BATCH_SIZE} (based on {gpu_memory_gb:.1f} GB GPU)")
     print(f"  Batches per epoch: ~{7000//BATCH_SIZE} (with 7k training samples)")
 elif DEVICE == "mps":
-    BATCH_SIZE = 32  # Increased from 24 for better throughput
+    BATCH_SIZE = 32  # Good balance for Apple Silicon
     print(f"✓ Batch size set to {BATCH_SIZE} for MPS (Apple Silicon)")
 else:
     BATCH_SIZE = 8  # CPU
@@ -150,7 +155,9 @@ LEARNING_RATE = 1e-4  # Initial LR
 WEIGHT_DECAY = 1e-4  # Reduced from 0.01 to allow more adaptation
 
 # Loss function
-LOSS_TYPE = 'mae'  # Changed from 'msle'/'huber' to 'mae' (L1 Loss) for sharper predictions
+# MSLE: Mean Squared Log Error - optimal for wide weight ranges
+# Works in log-space, so relative errors are penalized equally across all weights
+LOSS_TYPE = 'msle'  # Best for wide weight ranges (50-3450kg)
 
 # Progressive training (freeze → fine-tune)
 FREEZE_IMAGE_ENCODER_EPOCHS = 10  # Freeze ViT for first N epochs
@@ -159,11 +166,22 @@ FREEZE_IMAGE_ENCODER_EPOCHS = 10  # Freeze ViT for first N epochs
 GRADIENT_CLIP_NORM = 1.0
 USE_AMP = DEVICE == "cuda"  # Automatic Mixed Precision for GPU speedup
 
-# Learning rate scheduler
+# Learning rate scheduler - Use Cosine Annealing with Warm Restarts
 USE_LR_SCHEDULER = True
-LR_SCHEDULER_PATIENCE = 10
+LR_SCHEDULER_TYPE = 'cosine_warm'  # Options: 'plateau', 'cosine', 'cosine_warm'
+LR_SCHEDULER_PATIENCE = 10  # For plateau scheduler
 LR_SCHEDULER_FACTOR = 0.5
 LR_SCHEDULER_MIN_LR = 1e-7
+COSINE_T_0 = 20  # Restart every 20 epochs
+COSINE_T_MULT = 2  # Double the period after each restart
+
+# Exponential Moving Average (EMA) for stable predictions
+USE_EMA = True
+EMA_DECAY = 0.999  # Higher = more stable but slower adaptation
+
+# Label Smoothing (helps with overconfidence)
+USE_LABEL_SMOOTHING = True
+LABEL_SMOOTHING_FACTOR = 0.1  # Add noise to targets
 
 # Early stopping
 EARLY_STOPPING_PATIENCE = 20
