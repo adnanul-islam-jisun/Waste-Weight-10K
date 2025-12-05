@@ -107,7 +107,7 @@ data/*
 explanation_outputs/
 
 # Attention analysis outputs
-attention_analysis/
+# attention_analysis/
 attention_visualizations/
 
 # Temporary files
