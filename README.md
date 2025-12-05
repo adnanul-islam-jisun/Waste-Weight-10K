@@ -1,9 +1,10 @@
 # Weight Prediction System - Multimodal Deep Learning
 
-> **Vision Transformer + Mutual Attention Fusion for Product Weight Estimation**  
+> **Stage 1: Vision Transformer + Mutual Attention Fusion for Product Weight Estimation**  
+> **Stage 2: LLM-Powered Explainability with Llama 3.1 8B**  
 > **🚀 GPU-Optimized with Automatic Mixed Precision (AMP)**
 
-Predicts product weights (50 - 3,450 kg) using RGB images and metadata features with state-of-the-art Vision Transformers and **Mutual Attention Fusion** architecture for advanced cross-modal feature interaction.
+Predicts product weights (50 - 3,450 kg) using RGB images and metadata features with state-of-the-art Vision Transformers and **Mutual Attention Fusion** architecture for advanced cross-modal feature interaction. Includes a comprehensive **Explanation Pipeline** powered by Llama 3.1 8B for human-readable prediction insights.
 
 ---
 
@@ -18,6 +19,11 @@ python train.py
 
 # 3. Check results
 cat checkpoints/training_log_*.csv
+
+# 4. Generate explanations for predictions (Stage 2)
+python run_explain.py  # Interactive mode
+# OR
+python explain.py --checkpoint checkpoints/best_model_phase2_*.pt --max-samples 10
 ```
 
 ---
@@ -363,10 +369,17 @@ cat checkpoints/training_log_*.csv
 ```
 Weight_management/
 │
-├── train.py                   ⭐ MAIN TRAINING SCRIPT
+├── train.py                   ⭐ MAIN TRAINING SCRIPT (Stage 1)
 │   ├─ train_model()           → Progressive training with AMP
 │   ├─ evaluate_model()        → Test set evaluation
 │   └─ Main pipeline           → Data loading → Training → Evaluation
+│
+├── explain.py                 ⭐ EXPLANATION ENTRY POINT (Stage 2)
+│   ├─ Single image mode       → Explain one prediction
+│   ├─ Batch mode              → Explain test set samples
+│   └─ LLM integration         → Llama 3.1 8B reasoning
+│
+├── run_explain.py             → Interactive explanation runner
 │
 ├── predict.py                 → Inference pipeline
 │
@@ -377,6 +390,11 @@ Weight_management/
 │   │   ├─ Training hyperparameters
 │   │   └─ GPU optimizations
 │   ├── training_config.py     → Model creation & weight preprocessing
+│   ├── explanation_config.py  ⭐ EXPLANATION SETTINGS
+│   │   ├─ LLM configuration (Llama 3.1 8B)
+│   │   ├─ SHAP explainability settings
+│   │   ├─ Prompt template settings
+│   │   └─ Output configuration
 │   └── hyperparameters.py     → Additional hyperparameters
 │
 ├── models/
@@ -396,7 +414,16 @@ Weight_management/
 │   │   └─ MultimodalWeightPredictor_WithAttention
 │   │
 │   ├── multimodal_fusion.py   → Late fusion (simple concatenation)
-│   └── loss_functions.py      ⭐ 10 loss options (MSLE recommended)
+│   ├── loss_functions.py      ⭐ 10 loss options (MSLE recommended)
+│   └── llama-3.1-8b-instruct/ → Local LLM weights (optional)
+│
+├── explanation/               ⭐ STAGE 2: EXPLANATION MODULE
+│   ├── __init__.py            → Module exports & factory functions
+│   ├── post_hoc_analyzer.py   ⭐ Metrics, SHAP, modality analysis
+│   ├── prompt_generator.py    → Template-based prompt creation
+│   ├── llm_reasoning.py       ⭐ Llama 3.1 8B integration
+│   └── templates/
+│       └── explanation_template.txt → Customizable LLM prompt
 │
 ├── features/
 │   ├── feature_engineering.py → Creates 20 physics-informed features
@@ -425,6 +452,9 @@ Weight_management/
 │   ├── best_model_phase2_*.pt ⭐ BEST MODEL (use this!)
 │   ├── latest_checkpoint.pt   → Resume training
 │   └── history_*.json         → Training history
+│
+├── explanation_outputs/       → Generated explanations (Stage 2)
+│   └── batch_explanations_*.json → Explanation results
 │
 └── requirements.txt
 ```
@@ -603,6 +633,324 @@ Input Image (224×224×3) + Metadata (Type + 9 selected features)
 
 ---
 
+## 🔍 Stage 2: Explanation Pipeline
+
+> **LLM-Powered Post-Hoc Explainability with Llama 3.1 8B**
+
+The explanation pipeline provides human-readable explanations for weight predictions using a three-component architecture that combines post-hoc analysis, structured prompt generation, and LLM reasoning.
+
+### 🏗️ Explanation Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    STAGE 2: EXPLANATION PIPELINE                                 │
+│                  Post-Hoc Analysis + LLM Reasoning                              │
+│                     Llama 3.1 8B (8-bit Quantized)                              │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                        WEIGHT PREDICTION (from Stage 1)
+                                    │
+                                    ▼
+                        ┌───────────────────────┐
+                        │   Predicted Weight    │
+                        │   + Input Features    │
+                        │   + Actual Weight     │
+                        │     (if available)    │
+                        └───────────┬───────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    📊 POST-HOC ANALYZER                                          │
+│                    (Quantitative Evidence Extraction)                            │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  ┌───────────────────────────────────────────────────────────────────────────┐  │
+│  │  PERFORMANCE METRICS                                                       │  │
+│  │  ─────────────────────────────────────────────────────────────────────    │  │
+│  │  • Absolute Error:   |predicted - actual| in kg                          │  │
+│  │  • Percentage Error: |error / actual| × 100%                              │  │
+│  │  • Error Category:   excellent/good/acceptable/poor                       │  │
+│  │                                                                            │  │
+│  │  Thresholds:                                                               │  │
+│  │    Excellent: ≤50kg | Good: ≤100kg | Acceptable: ≤200kg | Poor: >200kg   │  │
+│  └───────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+│  ┌───────────────────────────────────────────────────────────────────────────┐  │
+│  │  MODALITY CONTRIBUTION ANALYSIS                                            │  │
+│  │  ─────────────────────────────────────────────────────────────────────    │  │
+│  │                                                                            │  │
+│  │   Image Features (768-dim)         Metadata Features (256-dim)            │  │
+│  │          │                                  │                              │  │
+│  │          ▼                                  ▼                              │  │
+│  │   ┌──────────────┐                  ┌──────────────┐                      │  │
+│  │   │ L2 Norm      │                  │ L2 Norm      │                      │  │
+│  │   │ Calculation  │                  │ Calculation  │                      │  │
+│  │   └──────┬───────┘                  └──────┬───────┘                      │  │
+│  │          │                                  │                              │  │
+│  │          └──────────────┬───────────────────┘                              │  │
+│  │                         ▼                                                  │  │
+│  │              ┌──────────────────────┐                                      │  │
+│  │              │  Relative Contribution│                                     │  │
+│  │              │  Image: X% | Meta: Y% │                                     │  │
+│  │              └──────────────────────┘                                      │  │
+│  │                                                                            │  │
+│  │   Purpose: Understand which modality drove the prediction                 │  │
+│  └───────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+│  ┌───────────────────────────────────────────────────────────────────────────┐  │
+│  │  SHAP FEATURE IMPORTANCE (Optional)                                        │  │
+│  │  ─────────────────────────────────────────────────────────────────────    │  │
+│  │                                                                            │  │
+│  │  Uses KernelExplainer on fused features (1024-dim):                       │  │
+│  │    • Background samples: 100 reference predictions                        │  │
+│  │    • Computes Shapley values for each feature dimension                   │  │
+│  │    • Identifies top contributors to prediction                            │  │
+│  │                                                                            │  │
+│  │  Output:                                                                   │  │
+│  │    feature_importance: {                                                   │  │
+│  │      'image_region_42': 0.15,    # 15% contribution                       │  │
+│  │      'log_volume': 0.22,         # 22% contribution                       │  │
+│  │      'compactness': 0.08,        # 8% contribution                        │  │
+│  │      ...                                                                   │  │
+│  │    }                                                                       │  │
+│  └───────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+│  ┌───────────────────────────────────────────────────────────────────────────┐  │
+│  │  ATTENTION WEIGHT EXTRACTION                                               │  │
+│  │  ─────────────────────────────────────────────────────────────────────    │  │
+│  │                                                                            │  │
+│  │  From Mutual Attention Fusion layers:                                      │  │
+│  │    • Visual→Metadata attention scores (8 heads × 2 layers)                │  │
+│  │    • Metadata→Visual attention scores (8 heads × 2 layers)                │  │
+│  │                                                                            │  │
+│  │  Shows cross-modal interaction patterns                                    │  │
+│  └───────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+│  ┌───────────────────────────────────────────────────────────────────────────┐  │
+│  │  CONFIDENCE ESTIMATION                                                     │  │
+│  │  ─────────────────────────────────────────────────────────────────────    │  │
+│  │                                                                            │  │
+│  │  Factors considered:                                                       │  │
+│  │    • Feature magnitude consistency                                         │  │
+│  │    • Modality agreement (image vs metadata alignment)                     │  │
+│  │    • Prediction in typical weight range                                    │  │
+│  │                                                                            │  │
+│  │  Output: confidence_score ∈ [0.0, 1.0]                                    │  │
+│  └───────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    📝 PROMPT GENERATOR                                           │
+│                    (Metrics → Structured LLM Prompt)                             │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  Input: PostHocAnalyzer metrics dictionary                                       │
+│                                                                                  │
+│  ┌───────────────────────────────────────────────────────────────────────────┐  │
+│  │  TEMPLATE STRUCTURE (Llama 3.1 Format)                                     │  │
+│  │  ─────────────────────────────────────────────────────────────────────    │  │
+│  │                                                                            │  │
+│  │  <|begin_of_text|><|start_header_id|>system<|end_header_id|>              │  │
+│  │                                                                            │  │
+│  │  You are an expert AI assistant specializing in explaining                │  │
+│  │  waste weight predictions from a multimodal ML model...                   │  │
+│  │                                                                            │  │
+│  │  Guidelines:                                                               │  │
+│  │  - Be concise (max {max_length} words)                                    │  │
+│  │  - Use {style} language                                                   │  │
+│  │  - Focus on actionable insights                                           │  │
+│  │  - Highlight modality influence                                           │  │
+│  │                                                                            │  │
+│  │  <|eot_id|><|start_header_id|>user<|end_header_id|>                       │  │
+│  │                                                                            │  │
+│  │  ## Prediction Summary                                                     │  │
+│  │  - Predicted Weight: {prediction:.1f} kg                                  │  │
+│  │  - Actual Weight: {actual_weight:.1f} kg                                  │  │
+│  │  - Absolute Error: {abs_error:.1f} kg                                     │  │
+│  │  - Percentage Error: {pct_error:.1f}%                                     │  │
+│  │                                                                            │  │
+│  │  ## Model Confidence                                                       │  │
+│  │  - Confidence Score: {confidence_score:.1%}                               │  │
+│  │  - Error Category: {error_category}                                       │  │
+│  │                                                                            │  │
+│  │  ## Input Contribution Analysis                                            │  │
+│  │  - Image Contribution: {image_contribution:.1%}                           │  │
+│  │  - Metadata Contribution: {metadata_contribution:.1%}                     │  │
+│  │                                                                            │  │
+│  │  ## Feature Insights                                                       │  │
+│  │  {formatted_feature_importance}                                            │  │
+│  │                                                                            │  │
+│  │  <|eot_id|><|start_header_id|>assistant<|end_header_id|>                  │  │
+│  └───────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+│  Configuration:                                                                  │
+│    • max_length: 300 words (default)                                            │
+│    • style: "professional" | "casual" | "technical"                             │
+│    • Custom templates supported via templates/ directory                        │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    🤖 LLM REASONING                                              │
+│                    (Llama 3.1 8B Instruct)                                       │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  ┌───────────────────────────────────────────────────────────────────────────┐  │
+│  │  MODEL CONFIGURATION                                                       │  │
+│  │  ─────────────────────────────────────────────────────────────────────    │  │
+│  │                                                                            │  │
+│  │  Model:         meta-llama/Meta-Llama-3.1-8B-Instruct                     │  │
+│  │  Parameters:    8 Billion                                                  │  │
+│  │  Quantization:  8-bit (bitsandbytes) → ~8GB VRAM                          │  │
+│  │                 4-bit available → ~4GB VRAM                                │  │
+│  │  Local Path:    models/llama-3.1-8b-instruct/                             │  │
+│  │                                                                            │  │
+│  └───────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+│  ┌───────────────────────────────────────────────────────────────────────────┐  │
+│  │  GENERATION PARAMETERS                                                     │  │
+│  │  ─────────────────────────────────────────────────────────────────────    │  │
+│  │                                                                            │  │
+│  │  max_new_tokens:     512       (output length limit)                       │  │
+│  │  temperature:        0.7       (creativity vs determinism)                 │  │
+│  │  top_p:              0.9       (nucleus sampling)                          │  │
+│  │  top_k:              50        (top-k sampling)                            │  │
+│  │  repetition_penalty: 1.1       (avoid repetitive text)                     │  │
+│  │  do_sample:          True      (enable sampling)                           │  │
+│  │                                                                            │  │
+│  └───────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+│  ┌───────────────────────────────────────────────────────────────────────────┐  │
+│  │  DEPLOYMENT OPTIONS                                                        │  │
+│  │  ─────────────────────────────────────────────────────────────────────    │  │
+│  │                                                                            │  │
+│  │  Option 1: Local Model (Default)                                          │  │
+│  │    ├─ Loads from models/llama-3.1-8b-instruct/                            │  │
+│  │    ├─ Uses 8-bit quantization                                              │  │
+│  │    └─ Requires ~8GB VRAM                                                   │  │
+│  │                                                                            │  │
+│  │  Option 2: Hugging Face API                                                │  │
+│  │    ├─ Uses HUGGINGFACE_API_TOKEN                                          │  │
+│  │    ├─ No local GPU required                                                │  │
+│  │    └─ Rate limited by API                                                  │  │
+│  │                                                                            │  │
+│  │  Option 3: No LLM (Metrics Only)                                          │  │
+│  │    ├─ Skips LLM reasoning                                                  │  │
+│  │    └─ Returns raw metrics from PostHocAnalyzer                            │  │
+│  │                                                                            │  │
+│  └───────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+                        ┌───────────────────────┐
+                        │  EXPLANATION OUTPUT   │
+                        │  ─────────────────── │
+                        │  • Natural language   │
+                        │    explanation        │
+                        │  • Metrics summary    │
+                        │  • Confidence score   │
+                        │  • Feature insights   │
+                        └───────────────────────┘
+```
+
+### 📋 Explanation Output Example
+
+```json
+{
+  "prediction": 1250.5,
+  "actual_weight": 1180.0,
+  "absolute_error": 70.5,
+  "percentage_error": 5.97,
+  "error_category": "good",
+  "confidence_score": 0.85,
+  "image_contribution": 0.62,
+  "metadata_contribution": 0.38,
+  "feature_importance": {
+    "log_volume": 0.28,
+    "compactness": 0.15,
+    "log_distance": 0.12
+  },
+  "explanation": "The model predicted a weight of 1,250.5 kg for this waste item, 
+   which is within 6% of the actual weight (1,180 kg). The prediction was 
+   primarily influenced by visual features (62%), suggesting the image provided 
+   strong size and density cues. Key contributing factors include the item's 
+   large volume and compact shape. The model shows high confidence (85%) in 
+   this prediction, indicating consistent signals from both modalities."
+}
+```
+
+### 🚀 Explanation Usage
+
+```bash
+# Quick Start - Interactive Runner
+python run_explain.py
+
+# Explain test set predictions (batch mode)
+python explain.py --checkpoint checkpoints/best_model_phase2_*.pt --max-samples 20
+
+# Single image explanation
+python explain.py --image path/to/image.jpg \
+                  --category 0 \
+                  --numerical "1.2,3.4,5.6,..." \
+                  --actual-weight 500
+
+# Metrics only (no LLM)
+python explain.py --checkpoint model.pt --no-llm
+
+# Use 4-bit quantization (lower memory)
+python explain.py --checkpoint model.pt --load-in-4bit
+```
+
+### ⚙️ Explanation Configuration
+
+| Category | Parameter | Default | Description |
+|----------|-----------|---------|-------------|
+| **LLM** | LLM_MODEL_NAME | `llama-3.1-8b-instruct` | Model identifier |
+| | LLM_LOAD_IN_8BIT | True | 8-bit quantization |
+| | LLM_LOAD_IN_4BIT | False | 4-bit quantization |
+| | LLM_MAX_NEW_TOKENS | 512 | Max output tokens |
+| | LLM_TEMPERATURE | 0.7 | Generation temperature |
+| **SHAP** | SHAP_BACKGROUND_SAMPLES | 100 | Background dataset size |
+| | SHAP_ALGORITHM | `kernel` | SHAP explainer type |
+| **Output** | EXPLANATION_MAX_LENGTH | 300 | Max words in explanation |
+| | EXPLANATION_STYLE | `professional` | Language style |
+| | SAVE_EXPLANATIONS_TO_FILE | True | Save to JSON |
+
+### 📂 Explanation Module Structure
+
+```
+explanation/
+├── __init__.py                 # Module exports & factory functions
+├── post_hoc_analyzer.py        ⭐ Metrics & SHAP analysis
+│   ├─ analyze()                → Complete post-hoc analysis
+│   ├─ _compute_error_metrics() → MAE, MAPE calculation
+│   ├─ _compute_modality_contribution() → Image vs Metadata
+│   └─ _compute_shap_importance() → Feature attributions
+│
+├── prompt_generator.py         📝 Template-based prompt creation
+│   ├─ generate()               → Create LLM prompt from metrics
+│   ├─ _prepare_template_variables() → Format template vars
+│   └─ _format_feature_insights() → Human-readable features
+│
+├── llm_reasoning.py            🤖 Llama 3.1 8B integration
+│   ├─ LLMReasoning             → Core LLM wrapper class
+│   ├─ ExplanationGenerator     → High-level API
+│   └─ _load_local_model()      → Quantized model loading
+│
+└── templates/
+    └── explanation_template.txt → Customizable prompt template
+
+explanation_outputs/             # Generated explanations
+├── batch_explanations_*.json   → Batch results
+└── single_explanation_*.json   → Individual results
+```
+
+---
+
 ## 🐛 Troubleshooting
 
 ### Out of Memory
@@ -639,6 +987,9 @@ This project is licensed under the MIT License.
 - **PyTorch** - Deep learning framework
 - **torchvision** - Pretrained Vision Transformers
 - **ViT Paper** - "An Image is Worth 16x16 Words" (Dosovitskiy et al., 2020)
+- **Llama 3.1** - Meta AI's large language model for explanation generation
+- **SHAP** - Shapley Additive Explanations for feature importance
+- **Hugging Face Transformers** - LLM loading and inference
 
 ---
 
@@ -649,4 +1000,4 @@ This project is licensed under the MIT License.
 
 ---
 
-**Ready to predict weights with deep learning! 🚀**
+**Ready to predict weights with deep learning and explain predictions with AI! 🚀**

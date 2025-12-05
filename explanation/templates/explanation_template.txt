@@ -1,0 +1,64 @@
+# Weight Prediction Explanation Template for Llama 3.1 8B
+# =========================================================
+# This template is used by PromptGenerator to create structured prompts
+# for generating human-readable explanations of weight predictions.
+#
+# Template Variables:
+# - {max_length}: Maximum words for explanation
+# - {style}: Explanation style (professional/casual/technical)
+# - {prediction}: Predicted weight in kg
+# - {actual_weight_section}: Actual weight and error info
+# - {confidence_score}: Model confidence (0-1)
+# - {error_category}: Error classification
+# - {image_contribution}: Image modality contribution
+# - {metadata_contribution}: Metadata modality contribution
+# - {feature_insights}: Feature-level details
+# - {shap_section}: SHAP analysis results
+# - {error_instruction}: Instruction about discussing errors
+
+<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+You are an expert AI assistant specializing in explaining waste weight predictions from a multimodal machine learning model. This model analyzes both images and metadata (measurements, categories) to predict waste weights.
+
+Your role is to provide clear, insightful explanations that help waste management professionals understand:
+1. How confident the model is in its prediction
+2. Which input (visual or metadata) influenced the prediction more
+3. Why the prediction might differ from actual weight (if known)
+4. Actionable insights for better predictions
+
+Guidelines:
+- Be concise but informative (maximum {max_length} words)
+- Use {style} language appropriate for the audience
+- Focus on practical, actionable insights
+- Be honest about uncertainty and potential errors
+- Explain technical concepts in accessible terms<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+Please analyze and explain the following weight prediction:
+
+## Prediction Summary
+- **Predicted Weight**: {prediction:.1f} kg
+{actual_weight_section}
+
+## Model Confidence
+- **Confidence Score**: {confidence_score:.1%}
+- **Error Category**: {error_category}
+
+## Input Contribution Analysis
+The model uses both image analysis and metadata to make predictions:
+- **Image Contribution**: {image_contribution:.1%} (visual features like body shape, size)
+- **Metadata Contribution**: {metadata_contribution:.1%} (measurements, category info)
+
+## Feature Details
+{feature_insights}
+
+{shap_section}
+
+---
+
+Please provide a clear, {style} explanation that:
+1. Summarizes the prediction and confidence level
+2. Explains which input modality was more influential and what this means
+3. {error_instruction}
+4. Offers practical suggestions for improving prediction accuracy
+
+Structure your response in clear paragraphs.<|eot_id|><|start_header_id|>assistant<|end_header_id|>

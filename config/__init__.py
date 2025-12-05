@@ -12,6 +12,16 @@ from .config import (
     ATTENTION_EMBED_DIM, ATTENTION_NUM_HEADS
 )
 
+# Stage 2: Explanation Configuration
+from .explanation_config import (
+    LLM_MODEL_NAME, LLM_DEVICE, LLM_LOAD_IN_8BIT, LLM_LOAD_IN_4BIT,
+    LLM_MAX_NEW_TOKENS, LLM_TEMPERATURE,
+    SHAP_BACKGROUND_SAMPLES, SHAP_ALGORITHM,
+    ENABLE_MODALITY_CONTRIBUTION, ENABLE_FEATURE_IMPORTANCE,
+    EXPLANATION_OUTPUT_DIR, SAVE_EXPLANATIONS_TO_FILE,
+    get_llm_config, get_shap_config, print_explanation_config
+)
+
 __all__ = [
     # Paths
     'CSV_PATH', 'BASE_IMAGE_PATH', 'CHECKPOINT_DIR', 'LOGS_DIR',
@@ -26,5 +36,12 @@ __all__ = [
     'BATCH_SIZE', 'EPOCHS', 'LEARNING_RATE', 'WEIGHT_DECAY', 'LOSS_TYPE',
     'FREEZE_IMAGE_ENCODER_EPOCHS', 'GRADIENT_CLIP_NORM', 'USE_LOG_TRANSFORM',
     # Utilities
-    'RANDOM_SEED', 'clear_gpu_memory'
+    'RANDOM_SEED', 'clear_gpu_memory',
+    # Stage 2: Explanation
+    'LLM_MODEL_NAME', 'LLM_DEVICE', 'LLM_LOAD_IN_8BIT', 'LLM_LOAD_IN_4BIT',
+    'LLM_MAX_NEW_TOKENS', 'LLM_TEMPERATURE',
+    'SHAP_BACKGROUND_SAMPLES', 'SHAP_ALGORITHM',
+    'ENABLE_MODALITY_CONTRIBUTION', 'ENABLE_FEATURE_IMPORTANCE',
+    'EXPLANATION_OUTPUT_DIR', 'SAVE_EXPLANATIONS_TO_FILE',
+    'get_llm_config', 'get_shap_config', 'print_explanation_config'
 ]

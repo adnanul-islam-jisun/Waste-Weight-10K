@@ -436,6 +436,48 @@ class MultimodalWeightPredictor_WithAttention(nn.Module):
             param.requires_grad = True
         print("✓ Metadata encoder unfrozen")
     
+    def get_feature_representations(
+        self,
+        images: torch.Tensor,
+        category_indices: torch.Tensor,
+        numerical_features: torch.Tensor
+    ) -> dict:
+        """
+        Extract intermediate feature representations for analysis.
+        
+        Args:
+            images (torch.Tensor): Batch of images
+            category_indices (torch.Tensor): Category indices
+            numerical_features (torch.Tensor): Numerical metadata
+        
+        Returns:
+            dict: Dictionary containing:
+                - 'visual_features': Features from image encoder
+                - 'metadata_features': Features from metadata encoder
+                - 'fused_features': Combined features after attention fusion
+        """
+        with torch.no_grad():
+            # Extract raw features from encoders
+            visual_features = self.image_encoder(images)
+            metadata_features = self.metadata_encoder(category_indices, numerical_features)
+            
+            # Get fused features after attention
+            fused_features = self.attention_fusion(
+                visual_features, metadata_features, return_attention=False
+            )
+            
+            # Apply stacked attention blocks
+            for attn_block in self.stacked_attention:
+                fused_features = attn_block(
+                    fused_features, fused_features, return_attention=False
+                )
+        
+        return {
+            'visual_features': visual_features,
+            'metadata_features': metadata_features,
+            'fused_features': fused_features
+        }
+
     def visualize_attention(
         self,
         images: torch.Tensor,
