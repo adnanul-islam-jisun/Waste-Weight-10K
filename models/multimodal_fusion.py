@@ -292,12 +292,22 @@ class MultimodalTrainer:
         self.loss_fn_name = loss_fn
         
         # Optimizer with different learning rates for different components
-        # Handle both MultimodalWeightPredictor and MultimodalWeightPredictor_WithAttention
-        param_groups = [
-            {'params': model.image_encoder.parameters(), 'lr': learning_rate * 0.1},
-            {'params': model.metadata_encoder.parameters(), 'lr': learning_rate},
-            {'params': model.regression_head.parameters(), 'lr': learning_rate}
-        ]
+        # Handle ImageOnly, MetadataOnly, and full Multimodal models
+        param_groups = []
+        
+        # Add image encoder (if exists)
+        if hasattr(model, 'image_encoder'):
+            param_groups.append({'params': model.image_encoder.parameters(), 'lr': learning_rate * 0.1})
+        
+        # Add metadata encoder (if exists)
+        if hasattr(model, 'metadata_encoder'):
+            param_groups.append({'params': model.metadata_encoder.parameters(), 'lr': learning_rate})
+        
+        # Always add regression head
+        if hasattr(model, 'regression_head'):
+            param_groups.append({'params': model.regression_head.parameters(), 'lr': learning_rate})
+        elif hasattr(model, 'head'):
+            param_groups.append({'params': model.head.parameters(), 'lr': learning_rate})
         
         # Add fusion layer parameters (different attribute names for different models)
         if hasattr(model, 'fusion_network'):
@@ -495,10 +505,13 @@ class MultimodalTrainer:
         return loss.item(), predictions, targets
     
     def freeze_image_encoder(self):
-        """Freeze image encoder parameters for progressive training."""
-        for param in self.model.image_encoder.parameters():
-            param.requires_grad = False
-        print("✓ Image encoder frozen")
+        """Freeze image encoder parameters for progressive training (if it exists)."""
+        if hasattr(self.model, 'image_encoder'):
+            for param in self.model.image_encoder.parameters():
+                param.requires_grad = False
+            print("✓ Image encoder frozen")
+        else:
+            print("⚠ Model has no image encoder to freeze")
     
     def unfreeze_all(self):
         """Unfreeze all model parameters."""

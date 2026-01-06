@@ -99,7 +99,6 @@ models/llama-3.1-8b-instruct/
 # Data files (keep .gitkeep for empty folders)
 data/*
 !data/.gitkeep
-*.csv
 *.json
 !requirements.txt
 
