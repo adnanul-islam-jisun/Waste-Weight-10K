@@ -82,7 +82,6 @@ logs/
 *.log
 
 # Model checkpoints and weights (large files)
-checkpoints/
 *.pt
 *.pth
 *.ckpt
