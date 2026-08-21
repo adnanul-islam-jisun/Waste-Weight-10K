@@ -118,7 +118,7 @@ EPOCHS = 120
 if DEVICE == "cuda":
     gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
     if gpu_memory_gb >= 24:  # A100, RTX 3090/4090
-        BATCH_SIZE = 128  # CHANGED from 256: More gradient updates per epoch (~109 batches)
+        BATCH_SIZE = 64  # CHANGED from 256: More gradient updates per epoch (~109 batches)
     elif gpu_memory_gb >= 16:  # V100, RTX 3080
         BATCH_SIZE = 48  # ~145 batches per epoch
     elif gpu_memory_gb >= 12:  # RTX 3060 Ti

@@ -1,0 +1,16 @@
+\begin{table}[htbp]
+\caption{Model Architecture Ablation Study Results}
+\label{tab:ablation_results}
+\begin{tabular}{lrrrrrrr}
+\toprule
+Experiment & MAE (kg) & RMSE (kg) & MAPE (%) & R² & Time (s) & Params (M) & GPU Mem (MB) \\
+\midrule
+Full Model (Baseline) & 117.81 & 191.03 & 8.73 & 0.95 & 5304.63 & 89.23 & 0.00 \\
+ViT-L/16 (Larger) & 135.78 & 189.62 & 11.04 & 0.95 & 9554.10 & 307.00 & 0.00 \\
+ViT-B/32 (Faster) & 179.97 & 268.96 & 13.63 & 0.90 & 2763.02 & 90.89 & 0.00 \\
+No Mutual Attention & 1020.74 & 1327.59 & 95.28 & -1.42 & 3416.61 & 86.80 & 0.00 \\
+Metadata Only & 1022.24 & 1325.01 & 98.28 & -1.41 & 698.88 & 0.47 & 0.00 \\
+Image Only & 1040.88 & 1346.51 & 100.00 & -1.48 & 84.27 & 86.36 & 0.00 \\
+\bottomrule
+\end{tabular}
+\end{table}

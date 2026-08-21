@@ -72,7 +72,7 @@ class WeightPredictionDataset(Dataset):
 # Data Preparation Function
 # ============================================================================
 
-def prepare_data(df, base_image_path, test_size=0.2, val_size=0.1, random_state=42):
+def prepare_data(df, base_image_path, test_size=0.2, val_size=0.1, random_state=42, batch_size=None):
     """
     Prepare train/val/test splits and create DataLoaders with normalization
     
@@ -82,6 +82,7 @@ def prepare_data(df, base_image_path, test_size=0.2, val_size=0.1, random_state=
         test_size: Fraction for test set
         val_size: Fraction for validation set
         random_state: Random seed for reproducibility
+        batch_size: Batch size for DataLoaders (default: use BATCH_SIZE from config)
     
     Returns:
         Dictionary containing DataLoaders, scalers, and metadata
@@ -267,9 +268,12 @@ def prepare_data(df, base_image_path, test_size=0.2, val_size=0.1, random_state=
     # ========================================================================
     # CREATE DATALOADERS with GPU optimization
     # ========================================================================
+    # Use provided batch_size or default to BATCH_SIZE from config
+    _batch_size = batch_size if batch_size is not None else BATCH_SIZE
+    
     train_loader = DataLoader(
         train_dataset, 
-        batch_size=BATCH_SIZE, 
+        batch_size=_batch_size, 
         shuffle=True, 
         num_workers=NUM_WORKERS, 
         pin_memory=PIN_MEMORY,
@@ -278,7 +282,7 @@ def prepare_data(df, base_image_path, test_size=0.2, val_size=0.1, random_state=
     )
     val_loader = DataLoader(
         val_dataset, 
-        batch_size=BATCH_SIZE,
+        batch_size=_batch_size,
         shuffle=False, 
         num_workers=NUM_WORKERS, 
         pin_memory=PIN_MEMORY,
@@ -287,7 +291,7 @@ def prepare_data(df, base_image_path, test_size=0.2, val_size=0.1, random_state=
     )
     test_loader = DataLoader(
         test_dataset, 
-        batch_size=BATCH_SIZE,
+        batch_size=_batch_size,
         shuffle=False, 
         num_workers=NUM_WORKERS, 
         pin_memory=PIN_MEMORY,
@@ -296,7 +300,7 @@ def prepare_data(df, base_image_path, test_size=0.2, val_size=0.1, random_state=
     )
     
     print(f"\n✓ DataLoaders created:")
-    print(f"  Batch size: {BATCH_SIZE}")
+    print(f"  Batch size: {_batch_size}")
     print(f"  Workers: {NUM_WORKERS}")
     print(f"  Pin memory: {PIN_MEMORY}")
     print(f"  Persistent workers: {PERSISTENT_WORKERS if NUM_WORKERS > 0 else False}")
