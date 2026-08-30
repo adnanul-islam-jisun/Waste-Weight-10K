@@ -1,0 +1,35 @@
+{
+  "experiment_info": {
+    "name": "Image Only",
+    "description": "Only ViT-B/16 image encoder, no metadata features",
+    "config": {
+      "use_image": true,
+      "use_metadata": false,
+      "use_attention_fusion": false,
+      "image_model": "vit_b_16",
+      "image_output_dim": 768,
+      "dropout_rate": 0.3,
+      "fusion_hidden_dims": [
+        512,
+        256,
+        128
+      ]
+    },
+    "expected_params": "~86M",
+    "notes": "Tests contribution of metadata features"
+  },
+  "model_config": {
+    "use_image": true,
+    "use_metadata": false,
+    "use_attention_fusion": false,
+    "image_model": "vit_b_16",
+    "image_output_dim": 768,
+    "dropout_rate": 0.3,
+    "fusion_hidden_dims": [
+      512,
+      256,
+      128
+    ]
+  },
+  "timestamp": "2026-01-04T23:10:34.031836"
+}

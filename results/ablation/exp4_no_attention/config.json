@@ -1,0 +1,39 @@
+{
+  "experiment_info": {
+    "name": "No Mutual Attention",
+    "description": "ViT + Metadata with simple concatenation (no attention)",
+    "config": {
+      "use_image": true,
+      "use_metadata": true,
+      "use_attention_fusion": false,
+      "image_model": "vit_b_16",
+      "image_output_dim": 768,
+      "category_embedding_dim": 32,
+      "metadata_output_dim": 256,
+      "dropout_rate": 0.3,
+      "fusion_hidden_dims": [
+        512,
+        256,
+        128
+      ]
+    },
+    "expected_params": "~98M",
+    "notes": "Tests contribution of mutual attention mechanism"
+  },
+  "model_config": {
+    "use_image": true,
+    "use_metadata": true,
+    "use_attention_fusion": false,
+    "image_model": "vit_b_16",
+    "image_output_dim": 768,
+    "category_embedding_dim": 32,
+    "metadata_output_dim": 256,
+    "dropout_rate": 0.3,
+    "fusion_hidden_dims": [
+      512,
+      256,
+      128
+    ]
+  },
+  "timestamp": "2026-01-04T23:54:12.991030"
+}

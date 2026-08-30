@@ -14,11 +14,22 @@ import os
 
 # ============================================================================
 # DATA PATHS
-# ============================================================================
+# Resolves data path across environments (env var -> local ./data/ -> fallback candidates)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOCAL_DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 
-# Use Environment Variable 'DATA_PATH' if set (for Docker), else use default local path
-DEFAULT_LOCAL_PATH = "/home/asiful/adnan_workspace/Dataset/disaster_data/waste_dataset"
-DATA_PATH = os.getenv("DATA_PATH", DEFAULT_LOCAL_PATH)
+_candidate_paths = [
+    os.getenv("DATA_PATH"),
+    LOCAL_DATA_DIR,
+    "/home/aislam/adnan_workspace/Dataset/disaster_data/waste_dataset",
+    "/home/asiful/adnan_workspace/Dataset/disaster_data/waste_dataset",
+]
+
+DATA_PATH = LOCAL_DATA_DIR
+for p in _candidate_paths:
+    if p and os.path.exists(p):
+        DATA_PATH = p
+        break
 
 BASE_IMAGE_PATH = DATA_PATH
 CSV_PATH = os.path.join(DATA_PATH, "image.csv")

@@ -1,0 +1,43 @@
+{
+  "experiment_info": {
+    "name": "Full Model (Baseline)",
+    "description": "Complete architecture: ViT-B/16 + Metadata + Mutual Attention",
+    "config": {
+      "use_image": true,
+      "use_metadata": true,
+      "use_attention_fusion": true,
+      "image_model": "vit_b_16",
+      "image_output_dim": 768,
+      "category_embedding_dim": 32,
+      "metadata_output_dim": 256,
+      "dropout_rate": 0.3,
+      "fusion_hidden_dims": [
+        512,
+        256,
+        128
+      ],
+      "attention_embed_dim": 256,
+      "attention_num_heads": 8
+    },
+    "expected_params": "~98M",
+    "notes": "Baseline configuration with all features enabled"
+  },
+  "model_config": {
+    "use_image": true,
+    "use_metadata": true,
+    "use_attention_fusion": true,
+    "image_model": "vit_b_16",
+    "image_output_dim": 768,
+    "category_embedding_dim": 32,
+    "metadata_output_dim": 256,
+    "dropout_rate": 0.3,
+    "fusion_hidden_dims": [
+      512,
+      256,
+      128
+    ],
+    "attention_embed_dim": 256,
+    "attention_num_heads": 8
+  },
+  "timestamp": "2026-01-04T15:24:16.018996"
+}
