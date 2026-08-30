@@ -24,12 +24,13 @@ from pathlib import Path
 import argparse
 from tqdm import tqdm
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent))
 
 from config.config import *
 from features.feature_engineering import engineer_features
 from config.training_config import create_optimized_model, WeightPreprocessor
-from Dataload.data_preprocessing import prepare_data
+from dataload.data_preprocessing import prepare_data
 
 
 def get_vit_attention(model, image):

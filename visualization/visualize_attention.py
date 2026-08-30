@@ -3,9 +3,10 @@ Attention Visualization Script
 Visualizes where the model focuses when making predictions
 """
 
+import sys
+import os
 import pandas as pd
 import numpy as np
-import os
 import torch
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
@@ -15,10 +16,13 @@ import torchvision.transforms as transforms
 from tqdm import tqdm
 import argparse
 
+# Add project root to sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from config.config import *
 from features.feature_engineering import engineer_features
 from config.training_config import create_optimized_model, WeightPreprocessor
-from Dataload.data_preprocessing import prepare_data
+from dataload.data_preprocessing import prepare_data
 
 
 def get_attention_maps(model, images, category_indices, numerical_features, device):

@@ -3,15 +3,19 @@ Debug script to diagnose training issues.
 Checks for data leakage, transformation issues, and metric calculations.
 """
 
+import sys
+import os
 import pandas as pd
 import numpy as np
 import torch
-import os
+
+# Add project root to sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.config import CSV_PATH, BASE_IMAGE_PATH, DEVICE
 from features.feature_engineering import engineer_features
 from config.training_config import WeightPreprocessor
-from Dataload.data_preprocessing import prepare_data
+from dataload.data_preprocessing import prepare_data
 
 
 def debug_weight_preprocessing():

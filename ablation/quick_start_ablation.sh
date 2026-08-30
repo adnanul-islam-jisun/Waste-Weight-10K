@@ -15,6 +15,10 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+cd "$PROJECT_ROOT"
+
 # Check if Python is available
 if ! command -v python &> /dev/null; then
     echo -e "${RED}❌ Python not found. Please install Python 3.8+${NC}"
@@ -39,7 +43,7 @@ case $choice in
     1)
         echo ""
         echo -e "${BLUE}Testing ablation study setup...${NC}"
-        python test_ablation_setup.py
+        python "$SCRIPT_DIR/test_ablation_setup.py"
         ;;
     2)
         echo ""
@@ -47,7 +51,7 @@ case $choice in
         read -p "Are you sure? (yes/no): " confirm
         if [ "$confirm" = "yes" ]; then
             echo -e "${GREEN}Starting full ablation study...${NC}"
-            python run_ablation_study.py --all
+            python "$SCRIPT_DIR/run_ablation_study.py" --all
         else
             echo "Cancelled."
         fi
@@ -64,37 +68,44 @@ case $choice in
         echo ""
         read -p "Enter experiment numbers (comma-separated, e.g., 1,2,4): " exp_nums
         echo -e "${GREEN}Running experiments: $exp_nums${NC}"
-        python run_ablation_study.py --experiments $exp_nums
+        python "$SCRIPT_DIR/run_ablation_study.py" --experiments $exp_nums
         ;;
     4)
         echo ""
         echo -e "${BLUE}Resuming from previous run...${NC}"
-        python run_ablation_study.py --resume
+        python "$SCRIPT_DIR/run_ablation_study.py" --resume
         ;;
     5)
         echo ""
         echo "Debug mode runs 1 experiment with 1 batch per epoch (very fast)"
         read -p "Enter experiment number (1-6): " exp_num
         echo -e "${GREEN}Running experiment $exp_num in debug mode...${NC}"
-        python run_ablation_study.py --debug --experiments $exp_num
+        python "$SCRIPT_DIR/run_ablation_study.py" --debug --experiments $exp_num
         ;;
     6)
         echo ""
-        if [ -d "ablation_results" ]; then
+        if [ -d "$PROJECT_ROOT/results/ablation" ] || [ -d "results/ablation" ]; then
             echo -e "${GREEN}Generating visualizations...${NC}"
-            python visualize_ablation_results.py
+            python "$SCRIPT_DIR/visualize_ablation_results.py"
         else
             echo -e "${RED}❌ No results found. Please run experiments first.${NC}"
         fi
         ;;
     7)
         echo ""
-        if [ -f "ablation_results/summary_report.csv" ]; then
+        REPORT_PATH="$PROJECT_ROOT/results/ablation/summary_report.csv"
+        if [ -f "$REPORT_PATH" ]; then
             echo -e "${GREEN}📊 Results Summary:${NC}"
             echo ""
-            column -t -s, ablation_results/summary_report.csv | head -20
+            column -t -s, "$REPORT_PATH" | head -20
             echo ""
-            echo -e "${BLUE}Full report: ablation_results/summary_report.csv${NC}"
+            echo -e "${BLUE}Full report: $REPORT_PATH${NC}"
+        elif [ -f "results/ablation/summary_report.csv" ]; then
+            echo -e "${GREEN}📊 Results Summary:${NC}"
+            echo ""
+            column -t -s, "results/ablation/summary_report.csv" | head -20
+            echo ""
+            echo -e "${BLUE}Full report: results/ablation/summary_report.csv${NC}"
         else
             echo -e "${RED}❌ No results found. Please run experiments first.${NC}"
         fi

@@ -6,13 +6,17 @@ Enhanced prediction with:
 - Support for both single image and batch prediction
 """
 
+import os
+import sys
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 from PIL import Image
 import numpy as np
 from typing import List, Tuple, Optional, Dict
-import os
+
+# Add project root to sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.config import DEVICE, IMAGE_SIZE
 

@@ -4,6 +4,7 @@ Trains and evaluates a Vision Transformer (ViT-B/16) regression model using pure
 """
 
 import os
+import sys
 import argparse
 import time
 import numpy as np
@@ -15,12 +16,15 @@ from tqdm import tqdm
 from PIL import Image
 import torchvision.transforms as transforms
 
+# Add project root to sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from config.config import CSV_PATH, BASE_IMAGE_PATH, DEVICE, BATCH_SIZE
 from models.image_encoder import ImageEncoder
 from models.architecture_variants import ImageOnlyPredictor
 from config.training_config import WeightPreprocessor
-from Dataload.data_preprocessing import prepare_data
-from evaluate import evaluate_model
+from dataload.data_preprocessing import prepare_data
+from scripts.evaluate import evaluate_model
 
 
 class ImageOnlyDataset(Dataset):

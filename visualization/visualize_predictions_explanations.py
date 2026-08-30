@@ -14,8 +14,8 @@ Notes:
 - Images are read from BASE_IMAGE_PATH and must exist on disk.
 """
 
-import argparse
 import os
+import sys
 import random
 from collections import defaultdict
 from typing import Dict, List, Tuple
@@ -28,9 +28,13 @@ import torch
 import torchvision.transforms as transforms
 from PIL import Image
 
+# Add project root to sys.path
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
+
 from config.config import BASE_IMAGE_PATH, CSV_PATH, DEVICE, IMAGE_SIZE
 from config.training_config import WeightPreprocessor, create_optimized_model
-from Dataload.data_preprocessing import prepare_data
+from dataload.data_preprocessing import prepare_data
 from explanation import PostHocAnalyzer, PromptGenerator, LLMReasoning
 from features.feature_engineering import engineer_features
 

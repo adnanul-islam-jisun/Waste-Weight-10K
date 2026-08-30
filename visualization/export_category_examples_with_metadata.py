@@ -10,10 +10,15 @@ Usage:
 
 import argparse
 import os
+import sys
 import shutil
 from typing import Optional
 
 import pandas as pd
+
+# Add project root to sys.path
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
 
 from config.config import BASE_IMAGE_PATH, CSV_PATH
 

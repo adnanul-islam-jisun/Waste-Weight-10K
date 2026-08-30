@@ -5,14 +5,11 @@ import seaborn as sns
 import os
 import sys
 
-# Add the current directory to the path so we can import config
-sys.path.append(os.getcwd())
+# Add project root to sys.path
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
 
-try:
-    from config.config import CSV_PATH
-except ImportError:
-    # Fallback if config import fails
-    CSV_PATH = "/home/asiful/adnan_workspace/Dataset/disaster_data/waste_dataset/image.csv"
+from config.config import CSV_PATH
 
 def set_professional_style():
     """Sets a professional plotting style suitable for academic papers."""
@@ -249,7 +246,7 @@ def plot_3d_dimensions(df, save_dir):
     print("Saved 3d_dimensions.png")
 
 def main():
-    save_dir = 'dataset_visualizations'
+    save_dir = os.path.join(PROJECT_ROOT, 'results', 'dataset_visualizations')
     os.makedirs(save_dir, exist_ok=True)
     
     set_professional_style()

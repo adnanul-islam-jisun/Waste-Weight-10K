@@ -27,8 +27,10 @@ import pandas as pd
 from tqdm import tqdm
 from datetime import datetime
 
-# Add project root to path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Add project root and ablation directory to path
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config.config import *
 from ablation_study_config import *
@@ -36,7 +38,7 @@ from ablation_utils import *
 from models.architecture_variants import create_ablation_model
 from models.loss_functions import recommend_loss_function
 from config.training_config import WeightPreprocessor, create_trainer_for_your_data
-from Dataload.data_preprocessing import prepare_data
+from dataload.data_preprocessing import prepare_data
 from features.feature_engineering import engineer_features
 
 

@@ -213,7 +213,8 @@ def main():
     print("="*70)
     
     # Build command
-    cmd = ["python", "explain.py"]
+    explain_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "explain.py")
+    cmd = [sys.executable, explain_script]
     cmd.extend(["--checkpoint", checkpoint])
     
     if data_choice == 1:

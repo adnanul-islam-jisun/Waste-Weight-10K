@@ -5,11 +5,15 @@ ExtraTrees, Gradient Boosting, MLP, Ridge) exclusively on physical metadata and 
 """
 
 import os
+import sys
 import time
 import joblib
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Any
+
+# Add project root to sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Scikit-learn models & tools
 from sklearn.model_selection import train_test_split

@@ -24,28 +24,6 @@ wheels/
 .installed.cfg
 *.egg
 
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
 # Virtual environments
 .venv/
 venv/
@@ -59,27 +37,16 @@ env/
 *.swp
 *.swo
 *~
-.project
-.pydevproject
-.settings/
-
-# macOS
 .DS_Store
 .AppleDouble
 .LSOverride
 ._*
-
-# Windows
 Thumbs.db
-ehthumbs.db
-Desktop.ini
 
-# Jupyter Notebook
-.ipynb_checkpoints/
-
-# Logs
+# Logs & Training artifacts
 logs/
 *.log
+catboost_info/
 
 # Model checkpoints and weights (large files)
 *.pt
@@ -95,27 +62,21 @@ models/llama-3.1-8b-instruct/
 *.bin
 *.gguf
 
-# Data files (keep .gitkeep for empty folders)
+# Large archives
+*.zip
+*.tar
+*.tar.gz
+
+# Data files (keep documentation and placeholder)
 data/*
 !data/.gitkeep
-*.json
-!requirements.txt
+!data/README.md
 
 # Explanation outputs
 explanation_outputs/
-
-# Attention analysis outputs
-# attention_analysis/
 attention_visualizations/
 
 # Temporary files
 *.tmp
 *.temp
 *.bak
-
-# Docker
-*.tar
-
-# Profiling
-*.prof
-*.lprof

@@ -4,6 +4,7 @@ Evaluates model robustness against measurement noise in manual metadata (V_x, V_
 """
 
 import os
+import sys
 import argparse
 import numpy as np
 import pandas as pd
@@ -12,11 +13,14 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import torchvision.transforms as transforms
 
+# Add project root to sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from config.config import CSV_PATH, BASE_IMAGE_PATH, DEVICE, BATCH_SIZE
 from features.feature_engineering import engineer_features
 from config.training_config import create_optimized_model, WeightPreprocessor
-from Dataload.data_preprocessing import prepare_data, WeightPredictionDataset
-from evaluate import evaluate_model
+from dataload.data_preprocessing import prepare_data, WeightPredictionDataset
+from scripts.evaluate import evaluate_model
 
 
 def inject_metadata_noise(df: pd.DataFrame, noise_level: float = 0.05, noise_type: str = 'gaussian', random_seed: int = 42) -> pd.DataFrame:

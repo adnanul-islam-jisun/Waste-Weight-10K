@@ -11,7 +11,8 @@ from datetime import datetime
 # ============================================================================
 
 # Base directory for all ablation results
-ABLATION_BASE_DIR = "./ablation_results"
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ABLATION_BASE_DIR = os.path.join(PROJECT_ROOT, "results", "ablation")
 TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 # Training settings for ablation (faster than full training)

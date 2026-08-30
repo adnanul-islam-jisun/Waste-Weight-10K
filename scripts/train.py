@@ -8,13 +8,17 @@ Optimized training pipeline for weight prediction using:
 - Progressive training (freeze → fine-tune)
 """
 
+import sys
+import os
 import pandas as pd
 import numpy as np
-import os
 import torch
 from tqdm import tqdm
 import json
 from datetime import datetime
+
+# Add project root to sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.config import *
 from features.feature_engineering import engineer_features
@@ -24,7 +28,7 @@ from config.training_config import (
     WeightPreprocessor
 )
 from models.loss_functions import recommend_loss_function
-from Dataload.data_preprocessing import prepare_data
+from dataload.data_preprocessing import prepare_data
 
 
 # ============================================================================

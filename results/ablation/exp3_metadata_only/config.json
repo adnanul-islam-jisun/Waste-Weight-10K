@@ -1,0 +1,35 @@
+{
+  "experiment_info": {
+    "name": "Metadata Only",
+    "description": "Only metadata encoder (categories + numerical), no images",
+    "config": {
+      "use_image": false,
+      "use_metadata": true,
+      "use_attention_fusion": false,
+      "category_embedding_dim": 32,
+      "metadata_output_dim": 256,
+      "dropout_rate": 0.3,
+      "fusion_hidden_dims": [
+        512,
+        256,
+        128
+      ]
+    },
+    "expected_params": "~12M",
+    "notes": "Tests contribution of visual features"
+  },
+  "model_config": {
+    "use_image": false,
+    "use_metadata": true,
+    "use_attention_fusion": false,
+    "category_embedding_dim": 32,
+    "metadata_output_dim": 256,
+    "dropout_rate": 0.3,
+    "fusion_hidden_dims": [
+      512,
+      256,
+      128
+    ]
+  },
+  "timestamp": "2026-01-04T23:12:36.399757"
+}

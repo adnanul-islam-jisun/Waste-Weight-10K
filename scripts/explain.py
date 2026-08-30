@@ -21,6 +21,7 @@ import sys
 from datetime import datetime
 from typing import Dict, List, Optional
 import warnings
+import time
 
 import numpy as np
 import pandas as pd
@@ -28,6 +29,9 @@ import torch
 from tqdm import tqdm
 from PIL import Image
 import torchvision.transforms as transforms
+
+# Add project root to sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Project imports
 from config.config import (
@@ -41,7 +45,7 @@ from config.explanation_config import (
     print_explanation_config
 )
 from config.training_config import create_optimized_model, WeightPreprocessor
-from Dataload.data_preprocessing import prepare_data
+from dataload.data_preprocessing import prepare_data
 from explanation import (
     PostHocAnalyzer,
     PromptGenerator,

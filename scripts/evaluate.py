@@ -3,17 +3,21 @@ Standalone Test Evaluation Script
 Loads the best model and evaluates on test set
 """
 
+import sys
+import os
 import pandas as pd
 import numpy as np
-import os
 import torch
 from tqdm import tqdm
 import argparse
 
+# Add project root to sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from config.config import *
 from features.feature_engineering import engineer_features
 from config.training_config import create_optimized_model, WeightPreprocessor
-from Dataload.data_preprocessing import prepare_data
+from dataload.data_preprocessing import prepare_data
 
 
 def evaluate_model(model, test_loader, weight_preprocessor, device):

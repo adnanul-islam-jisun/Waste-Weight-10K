@@ -4,12 +4,17 @@ Visualizes the engineered features and their relationships with weight.
 Helps identify which features are most predictive and check for multicollinearity.
 """
 
+import os
+import sys
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
-import os
+
+# Add project root to sys.path
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
 
 from config.config import CSV_PATH, BASE_IMAGE_PATH
 from features.feature_engineering import engineer_features
@@ -384,10 +389,12 @@ def check_multicollinearity(df, threshold=0.8):
     print("="*70 + "\n")
 
 
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, 'results', 'attention_analysis')
+
 def main():
     """Run all visualizations."""
     # Create output directory
-    os.makedirs('attention_analysis', exist_ok=True)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
     
     # Load data
     df = load_and_prepare_data()
@@ -410,27 +417,27 @@ def main():
     
     # 3. Plot correlation matrix
     print("\n📊 Generating correlation matrix...")
-    plot_correlation_matrix(df)
+    plot_correlation_matrix(df, save_path=os.path.join(OUTPUT_DIR, 'feature_correlation.png'))
     
     # 4. Plot features vs weight
     print("\n📊 Generating feature vs weight plots...")
-    plot_feature_vs_weight(df)
+    plot_feature_vs_weight(df, save_path=os.path.join(OUTPUT_DIR, 'features_vs_weight.png'))
     
     # 5. Plot feature distributions
     print("\n📊 Generating feature distribution plots...")
-    plot_feature_distributions(df)
+    plot_feature_distributions(df, save_path=os.path.join(OUTPUT_DIR, 'feature_distributions.png'))
     
     # 6. Plot feature importance
     print("\n📊 Generating feature importance plot...")
-    importance_df = plot_feature_importance(df)
+    importance_df = plot_feature_importance(df, save_path=os.path.join(OUTPUT_DIR, 'feature_importance.png'))
     
     # 7. Optional: Pairplots (can be slow for large datasets)
     print("\n📊 Generating pairplots by feature group...")
-    plot_pairplot_by_group(df)
+    plot_pairplot_by_group(df, save_dir=OUTPUT_DIR)
     
     print("\n" + "="*70)
     print("✓ ALL VISUALIZATIONS COMPLETE!")
-    print("  Check the 'attention_analysis/' folder for saved plots.")
+    print(f"  Check the '{OUTPUT_DIR}' folder for saved plots.")
     print("="*70 + "\n")
 
 

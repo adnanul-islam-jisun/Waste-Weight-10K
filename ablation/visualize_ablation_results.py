@@ -15,8 +15,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 
-# Add project root to path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Add project root and ablation directory to path
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ablation_study_config import *
 from ablation_utils import aggregate_all_results, load_experiment_results

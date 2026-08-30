@@ -47,12 +47,16 @@ for module_name in required_modules:
 # ============================================================================
 # 3. Check Project Files
 # ============================================================================
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 print("\n3️⃣ Checking project files...")
 required_files = [
-    'ablation_study_config.py',
-    'run_ablation_study.py',
-    'visualize_ablation_results.py',
-    'ablation_utils.py',
+    'ablation/ablation_study_config.py',
+    'ablation/run_ablation_study.py',
+    'ablation/visualize_ablation_results.py',
+    'ablation/ablation_utils.py',
     'models/architecture_variants.py',
     'config/config.py',
     'config/training_config.py',
@@ -60,15 +64,16 @@ required_files = [
     'models/metadata_encoder.py',
     'models/multimodal_fusion.py',
     'models/mutual_attention_fusion.py',
-    'Dataload/data_preprocessing.py',
+    'dataload/data_preprocessing.py',
     'features/feature_engineering.py',
 ]
 
-for file_path in required_files:
+for file_rel in required_files:
+    file_path = os.path.join(PROJECT_ROOT, file_rel)
     if os.path.exists(file_path):
-        print(f"   ✓ {file_path}")
+        print(f"   ✓ {file_rel}")
     else:
-        errors.append(f"Missing required file: {file_path}")
+        errors.append(f"Missing required file: {file_rel}")
 
 # ============================================================================
 # 4. Check GPU Availability
