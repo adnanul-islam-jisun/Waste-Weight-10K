@@ -210,7 +210,7 @@ def make_explanation_text(row: pd.Series, pred: float, actual: float, metrics: D
     conf_txt = f", conf {conf*100:.0f}%" if conf is not None else ""
     return (
         f"{pretty}\n"
-        f"V=({row['V_x']:.0f},{row['V_y']:.0f},{row['V_z']:.0f}) cm, "
+        f"V=({row['V_x']:.0f},{row['V_y']:.0f},{row['V_z']:.0f}) in, "
         f"D=({row['D_x']:.0f},{row['D_y']:.0f})\n"
         f"Pred {pred:.0f} kg | Actual {actual:.0f} kg | Error {err:+.0f} kg\n"
         f"Modalities: image {img_c:.0f}%, metadata {meta_c:.0f}%{conf_txt}"

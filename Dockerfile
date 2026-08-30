@@ -38,4 +38,4 @@ RUN mkdir -p checkpoints logs saved_models
 # EXPOSE 8000
 
 # Default command
-CMD ["python", "train.py"]
+CMD ["python", "scripts/train.py"]

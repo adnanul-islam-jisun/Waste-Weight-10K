@@ -161,7 +161,7 @@ def plot_numerical_distributions(df, save_dir):
     
     plt.title('Distribution of Numerical Features (Dimensions)')
     plt.xlabel('Feature')
-    plt.ylabel('Value (cm)')
+    plt.ylabel('Value (in)')
     
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, 'numerical_features_boxplot.png'), bbox_inches='tight')
@@ -206,7 +206,7 @@ def plot_feature_vs_weight(df, save_dir):
         # Mathematical labels
         col_label = f"${col}$"
         axes[i].set_title(f'{col_label} vs Weight')
-        axes[i].set_xlabel(f'{col_label} (cm)')
+        axes[i].set_xlabel(f'{col_label} (in)')
         axes[i].set_ylabel(r'Weight $y$ (kg)')
     
     # Remove empty subplot if any

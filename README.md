@@ -212,7 +212,7 @@ python ablation/visualize_ablation_results.py
 
 ## 📖 In-Depth Documentation
 
-- 📐 [**Dataset Specification (`docs/DATASET.md`)**](docs/DATASET.md): Spatial coordinate conventions, units ($\text{cm}$, $\text{kg}$, $\text{m}^3$), load-cell calibration, and physical setup details.
+- 📐 [**Dataset Specification (`docs/DATASET.md`)**](docs/DATASET.md): Spatial coordinate conventions, units ($\text{in}$, $\text{kg}$, $\text{m}^3$), load-cell calibration, and physical setup details.
 - 🔬 [**Reproducibility Guide (`docs/REPRODUCIBILITY.md`)**](docs/REPRODUCIBILITY.md): Exact command walkthroughs, split protocols, random seeds, and expected benchmark outputs.
 - ⚙️ [**Hyperparameters Reference (`docs/HYPERPARAMETERS.md`)**](docs/HYPERPARAMETERS.md): Full listing of optimization settings, layer sizes, and learning rates.
 - 🧪 [**Ablation Study Guide (`ablation/README.md`)**](ablation/README.md): Instructions for running and analyzing architectural variants.
