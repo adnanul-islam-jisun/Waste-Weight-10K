@@ -18,23 +18,23 @@ The **Waste-Weight-10K** dataset is a multimodal benchmark designed for contactl
 ## 2. Spatial Measurement Conventions & Units
 
 > [!IMPORTANT]
-> All raw dimension and spatial position columns in `image.csv` are recorded in **centimeters ($\text{cm}$)**, and weight is recorded in **kilograms ($\text{kg}$)**.
+> All raw dimension and spatial position columns in `image.csv` are recorded in **inches ($\text{in}$)**, and weight is recorded in **kilograms ($\text{kg}$)**.
 
 | Variable | Column Name | Unit | Description | Range (Raw) |
 |---|---|---|---|---|
-| Width | `V_x` ($L_x$) | $\text{cm}$ | Object bounding width along the X-axis | $10.0 - 250.0\text{ cm}$ |
-| Height | `V_y` ($L_y$) | $\text{cm}$ | Object bounding height along the Y-axis | $10.0 - 220.0\text{ cm}$ |
-| Depth | `V_z` ($L_z$) | $\text{cm}$ | Object bounding depth along the Z-axis | $10.0 - 250.0\text{ cm}$ |
-| Camera Distance | `D_x` ($D_x$) | $\text{cm}$ | Horizontal distance from camera optical center to object center | $50.0 - 450.0\text{ cm}$ |
-| Camera Height | `D_y` ($D_y$) | $\text{cm}$ | Height of camera optical center above the ground plane | $30.0 - 260.0\text{ cm}$ |
+| Width | `V_x` ($L_x$) | $\text{in}$ | Object bounding width along the X-axis | $10.0 - 250.0\text{ in}$ |
+| Height | `V_y` ($L_y$) | $\text{in}$ | Object bounding height along the Y-axis | $10.0 - 220.0\text{ in}$ |
+| Depth | `V_z` ($L_z$) | $\text{in}$ | Object bounding depth along the Z-axis | $10.0 - 250.0\text{ in}$ |
+| Camera Distance | `D_x` ($D_x$) | $\text{in}$ | Horizontal distance from camera optical center to object center | $50.0 - 450.0\text{ in}$ |
+| Camera Height | `D_y` ($D_y$) | $\text{in}$ | Height of camera optical center above the ground plane | $30.0 - 260.0\text{ in}$ |
 | Target Weight | `weight_in_kg` | $\text{kg}$ | Calibrated ground-truth mass from load cell | $3.5 - 3,450.0\text{ kg}$ |
 | Material Class | `Type` | string | Categorical material / scrap type | 11 distinct classes |
 
 ### Volume & Density Formulas
 - **Raw Volume (Code Level)**:
-  $$V_{\text{code}} = V_x \times V_y \times V_z \quad (\text{cm}^3)$$
-- **SI Volume (Paper Reporting)**:
-  $$V_{\text{SI}} = \frac{V_x \times V_y \times V_z}{10^6} \quad (\text{m}^3)$$
+  $$V_{\text{code}} = V_x \times V_y \times V_z \quad (\text{in}^3)$$
+- **SI Volume (Metric Reporting)**:
+  $$V_{\text{SI}} = V_x \times V_y \times V_z \times (0.0254)^3 \approx \frac{V_{\text{code}}}{61,023.7} \quad (\text{m}^3)$$
 - **Effective Apparent Volume**:
   $$V_{\text{apparent}} = \frac{V_{\text{code}}}{D_x^2 + \epsilon}$$
 
@@ -60,11 +60,11 @@ The **Waste-Weight-10K** dataset is a multimodal benchmark designed for contactl
 ## 4. Multi-View Setup & Physical Provenance
 
 1. **Multi-View Acquisition**:
-   To capture real-world visual diversity under variable perspective foreshortening and lighting, physical objects were photographed across systematically varied viewpoints (azimuths $0^\circ\text{--}360^\circ$), elevations ($D_y \in [30, 260]\text{ cm}$), and camera distances ($D_x \in [50, 450]\text{ cm}$).
+   To capture real-world visual diversity under variable perspective foreshortening and lighting, physical objects were photographed across systematically varied viewpoints (azimuths $0^\circ\text{--}360^\circ$), elevations ($D_y \in [30, 260]\text{ in}$), and camera distances ($D_x \in [50, 450]\text{ in}$).
 2. **Fixed-Weight Multi-Angle Clusters**:
    Certain categories (such as *Industrial Gas Cylinder* and *Battery Packs*) represent multi-view captures of fixed physical setups. Each individual photo represents a distinct visual perspective, lighting condition, and camera-to-object distance.
 3. **Data Quality Notes**:
-   - `V_y` for Object Setup #58 contained a single typographical data-entry entry ($891\text{ cm}$ vs physical $89.1\text{ cm}$), which is handled in the preprocessing pipeline.
+   - `V_y` for Object Setup #58 contained a single typographical data-entry entry ($891\text{ in}$ vs physical $89.1\text{ in}$), which is handled in the preprocessing pipeline.
    - For benchmark consistency, samples with weight $< 50\text{ kg}$ (e.g. lightweight packaging debris) are excluded in `train.py` via `MIN_WEIGHT_KG = 50`.
 
 ---
