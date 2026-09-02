@@ -218,18 +218,3 @@ python ablation/visualize_ablation_results.py
 - 🧪 [**Ablation Study Guide (`ablation/README.md`)**](ablation/README.md): Instructions for running and analyzing architectural variants.
 
 ---
-
-## 📄 Citation
-
-```bibtex
-@article{waste_weight_multimodal_2026,
-  title   = {Multimodal Weight Prediction for Industrial Scrap via Vision Transformers and Mutual Attention Fusion},
-  author  = {Adnanul Islam et al.},
-  journal = {IEEE Transactions on Big Data},
-  year    = {2026}
-}
-```
-
-## 📜 License
-
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
