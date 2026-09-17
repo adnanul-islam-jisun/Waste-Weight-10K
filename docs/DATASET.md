@@ -4,6 +4,8 @@
 
 The **Waste-Weight-10K** dataset is a multimodal benchmark designed for contactless physical weight estimation of industrial and commercial scrap objects from paired RGB imagery and spatial metadata.
 
+- 📥 **Dataset Download (Google Drive)**: [Waste-Weight-10K Google Drive Folder](https://drive.google.com/drive/folders/14jF5Fmr_T_j0sY7lCrolTbUTg-Jx7moq?usp=sharing)
+
 | Metric | Value | Description |
 |---|---|---|
 | **Total Samples** | 10,421 | Paired RGB images with tabular metadata |

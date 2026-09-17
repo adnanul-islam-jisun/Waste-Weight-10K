@@ -43,7 +43,8 @@ pip install -r requirements.txt
 
 ## 3. Data Preparation & Leakage-Free Preprocessing
 
-1. Place the dataset inside `data/` or set the `DATA_PATH` environment variable:
+1. **Download Dataset**: Obtain the **Waste-Weight-10K** dataset from [Google Drive](https://drive.google.com/drive/folders/14jF5Fmr_T_j0sY7lCrolTbUTg-Jx7moq?usp=sharing).
+2. Place the dataset inside `data/` or set the `DATA_PATH` environment variable:
    ```bash
    export DATA_PATH="/path/to/waste_dataset"
    ```

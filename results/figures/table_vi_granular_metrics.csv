@@ -1,0 +1,4 @@
+Mass Category,Samples,MAE (kg),MAPE (%)
+Light (0–100 kg),187,2.16,2.69
+Medium (101–500 kg),441,12.05,6.17
+Heavy (501–3500 kg),915,192.42,11.20
