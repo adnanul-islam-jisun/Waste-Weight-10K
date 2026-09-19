@@ -2,10 +2,9 @@
 
 This directory holds the **Waste-Weight-10K** dataset files used for training and evaluating the multimodal weight prediction models.
 
-## Download Dataset
+## Requesting the Dataset
 
-You can download the full **Waste-Weight-10K** dataset (images and metadata) from Google Drive:
-- 🔗 **Google Drive Folder**: [Waste-Weight-10K Dataset](https://drive.google.com/drive/folders/14jF5Fmr_T_j0sY7lCrolTbUTg-Jx7moq?usp=sharing)
+The **Waste-Weight-10K** dataset (images and metadata) is available by request only — see [Dataset Access](../README.md#-dataset-access) in the main README for instructions.
 
 ## Expected Directory Layout
 

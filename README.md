@@ -3,7 +3,7 @@
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c.svg)](https://pytorch.org/)
 [![CUDA Accelerated](https://img.shields.io/badge/CUDA-Enabled-green.svg)](https://developer.nvidia.com/cuda-zone)
-[![Dataset](https://img.shields.io/badge/Dataset-Google%20Drive-4285F4?logo=googledrive&logoColor=white)](https://drive.google.com/drive/folders/14jF5Fmr_T_j0sY7lCrolTbUTg-Jx7moq?usp=sharing)
+[![Dataset](https://img.shields.io/badge/Dataset-Request%20Access-4285F4?logo=googledrive&logoColor=white)](#-dataset-access)
 [![Reproducibility](https://img.shields.io/badge/Reproducibility-Verified-brightgreen.svg)](docs/REPRODUCIBILITY.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -15,7 +15,7 @@ An end-to-end multimodal deep learning framework for contactless mass and weight
 
 - **Multimodal Mutual Attention**: Bidirectional cross-attention mechanism aligning visual representations with 3D bounding geometry, aspect ratios, and spatial perspective features.
 - **Robust Field Performance**: Evaluated against measurement noise ($\pm 1\%$ to $\pm 15\%$) and visual environmental perturbations.
-- **Waste-Weight-10K Dataset**: Benchmark comprising 10,421 multimodal pairs across 11 material categories and 75 physical setups ([Download Dataset from Google Drive](https://drive.google.com/drive/folders/14jF5Fmr_T_j0sY7lCrolTbUTg-Jx7moq?usp=sharing)).
+- **Waste-Weight-10K Dataset**: Benchmark comprising 10,421 multimodal pairs across 11 material categories and 75 physical setups ([request access](#-dataset-access)).
 - **Comprehensive Ablation Suite**: 6 full architectural variants benchmarked under identical splits and random seeds (`seed = 42`).
 - **Post-Hoc Explainability**: Optional Stage 2 explanation pipeline utilizing feature attribution and Large Language Models (Llama 3.1 8B).
 
@@ -180,9 +180,8 @@ pip install -r requirements.txt
 
 ### 2. Dataset Setup
 
-1. **Download the Dataset**:
-   Download the **Waste-Weight-10K** dataset from Google Drive:
-   - 🔗 **Google Drive Link**: [Download Waste-Weight-10K Dataset](https://drive.google.com/drive/folders/14jF5Fmr_T_j0sY7lCrolTbUTg-Jx7moq?usp=sharing)
+1. **Request the Dataset**:
+   The **Waste-Weight-10K** dataset is available upon request — see [Dataset Access](#-dataset-access) below.
 
 2. **Place in Project or Configure Path**:
    Extract and place your dataset files inside `./data/` or configure the path via environment variable:
@@ -213,6 +212,23 @@ python ablation/run_ablation_study.py --all
 # Generate comparative visualizations and LaTeX table
 python ablation/visualize_ablation_results.py
 ```
+
+---
+
+## 🔗 Dataset Access
+
+The **Waste-Weight-10K** dataset is available by request only.
+
+To request access:
+
+- Use an institutional email (ending in `.edu`), where possible
+- Send an email to: [adnanulislam.jisan@gmail.com](mailto:adnanulislam.jisan@gmail.com)
+  Include the following:
+  - Your name and homepage or Google Scholar profile
+  - Your primary affiliation and job title
+  - The intended use of the dataset (research only)
+
+Responses will be provided within 2 business days.
 
 ---
 
