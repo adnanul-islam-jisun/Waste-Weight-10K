@@ -222,7 +222,7 @@ The **Waste-Weight-10K** dataset is available by request only.
 To request access:
 
 - Use an institutional email (ending in `.edu`), where possible
-- Send an email to: [adnanulislam.jisan@gmail.com](mailto:adnanulislam.jisan@gmail.com)
+- Send an email to: [m.raiaan.cs@gmail.com](mailto:m.raiaan.cs@gmail.com)
   Include the following:
   - Your name and homepage or Google Scholar profile
   - Your primary affiliation and job title
